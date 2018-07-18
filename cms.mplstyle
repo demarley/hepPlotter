@@ -1,0 +1,130 @@
+### Stlye sheet for CMS plots
+### > HEP plots
+###   -- Draw distributions from multiple sources
+###   -- Make ratio plots to compare distributions
+### Format defined:
+### > https://matplotlib.org/users/customizing.html
+
+
+
+### BACKEND
+backend : PDF
+
+
+### LINES
+# See http://matplotlib.org/api/artist_api.html#module-matplotlib.lines for more
+# information on line properties.
+lines.linewidth   : 2       # line width in points
+lines.linestyle   : -       # solid line
+lines.color       : black   # has no affect on plot(); see axes.prop_cycle
+lines.marker      : None    # the default marker
+lines.markersize  : 10      # markersize, in points
+
+
+### FONT
+# font properties used by text.Text.  See
+# http://matplotlib.org/api/font_manager_api.html for more
+# information on font properties.
+font.family         : sans-serif
+font.style          : normal
+font.serif          : Times New Roman
+font.sans-serif     : Helvetica
+
+
+### TEXT
+# text properties used by text.Text.  See
+# http://matplotlib.org/api/artist_api.html#module-matplotlib.text for more
+# information on text properties
+text.color          : black
+
+### LaTeX customizations. See http://wiki.scipy.org/Cookbook/Matplotlib/UsingTex
+text.usetex         : True                    # LaTeX formatting for labels and such
+text.latex.preamble :  \usepackage{amsmath},\usepackage{tgheros},\usepackage{sansmath},\sansmath,\usepackage{siunitx},\sisetup{detect-all}
+
+
+### AXES
+# default face and edge color, default tick sizes,
+# default fontsizes for ticklabels, and so on.  See
+# http://matplotlib.org/api/axes_api.html#module-matplotlib.axes
+axes.titlesize      : 18   # fontsize of the axes title
+axes.labelsize      : 18   # fontsize of the x any y labels
+
+### TICKS
+# see http://matplotlib.org/api/axis_api.html#matplotlib.axis.Tick
+xtick.top            : True    # draw ticks on the top side
+xtick.bottom         : True    # draw ticks on the bottom side
+xtick.major.size     : 8       # major tick size in points
+xtick.minor.size     : 4       # minor tick size in points
+#xtick.major.width    : 0.8    # major tick width in points
+#xtick.minor.width    : 0.6    # minor tick width in points
+#xtick.major.pad      : 3.5    # distance to major tick label in points
+#xtick.minor.pad      : 3.4    # distance to the minor tick label in points
+xtick.color          : k       # color of the tick labels
+xtick.labelsize      : 18      # fontsize of the tick labels
+xtick.direction      : in      # direction: in, out, or inout
+xtick.minor.visible  : True    # visibility of minor ticks on x-axis
+
+ytick.left           : True    # draw ticks on the left side
+ytick.right          : True    # draw ticks on the right side
+ytick.major.size     : 8       # major tick size in points
+ytick.minor.size     : 4       # minor tick size in points
+#ytick.major.width    : 0.8    # major tick width in points
+#ytick.minor.width    : 0.6    # minor tick width in points
+#ytick.major.pad      : 3.5    # distance to major tick label in points
+#ytick.minor.pad      : 3.4    # distance to the minor tick label in points
+ytick.color          : k       # color of the tick labels
+ytick.labelsize      : 18      # fontsize of the tick labels
+ytick.direction      : in      # direction: in, out, or inout
+ytick.minor.visible  : True    # visibility of minor ticks on y-axis
+
+
+### Legend
+legend.loc           : upper right
+legend.frameon       : False     # if True, draw the legend on a background patch
+legend.numpoints     : 1         # the number of marker points in the legend line
+legend.fontsize      : 18
+legend.columnspacing : 0.3       # column separation
+
+
+### FIGURE
+# See http://matplotlib.org/api/figure_api.html#matplotlib.figure.Figure
+#figure.titlesize : large        # size of the figure title (Figure.suptitle())
+#figure.titleweight : normal     # weight of the figure title
+figure.figsize   : 6,6          # figure size in inches
+figure.dpi       : 200           # figure dots per inch  (lower than the 'savefig' option)
+#figure.autolayout : False       # When True, automatically adjust subplot
+                                 # parameters to make the plot fit the figure
+
+# The figure subplot parameters.  All dimensions are a fraction of the
+figure.subplot.bottom  : 0.25    # the bottom of the subplots of the figure
+figure.subplot.top     : 0.75    # the top of the subplots of the figure
+figure.subplot.hspace  : 0       # the amount of height reserved for white space between subplots,
+                                 # expressed as a fraction of the average axis height
+
+
+### ERRORBAR PLOTS
+errorbar.capsize : 0             # length of end cap on error bars in pixels
+
+### HISTOGRAM PLOTS
+hist.bins : 10                   # The default number of histogram bins.
+
+### SCATTER PLOTS
+scatter.marker : o               # The default marker type for scatter plots.
+
+
+# the default savefig params can be different from the display params
+# e.g., you may want a higher resolution, or to make the figure
+# background white
+savefig.dpi         : 300      # figure dots per inch or 'figure'
+savefig.format      : pdf      # png, ps, pdf, svg
+savefig.bbox        : tight    # 'tight' or 'standard'.
+savefig.transparent : False    # setting that controls whether figures are saved with a
+                               # transparent background by default
+
+# pdf backend params
+pdf.compression   : 6          # integer from 0 to 9
+                               # 0 disables compression (good for debugging)
+pdf.fonttype      : 3          # Output Type 3 (Type3) or Type 42 (TrueType)
+
+
+## THE END ##

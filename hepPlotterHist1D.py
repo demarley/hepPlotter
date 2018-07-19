@@ -66,7 +66,7 @@ class HepPlotterHist1D(HepPlotter):
 
         for n,bar2plot in enumerate(bars2plot):
             bar2plot.kwargs["zorder"] = 150+n
-            
+
             tmp_barplot  = self.plotErrorbars(bar2plot)
             bars2plot[n] = tmp_barplot
 
@@ -88,15 +88,11 @@ class HepPlotterHist1D(HepPlotter):
         for i in hists2plot: self.data2plot[i.name] = i
         for i in bars2plot:  self.data2plot[i.name] = i
 
-        ## Axis labels
-        self.set_yaxis()
-
         ## ratio plot (common to many plots)
+        xaxis = None
         if self.ratio_plot:
             self.plotRatio()
-            self.set_xaxis(self.ax2)
-        else:
-            self.set_xaxis()
+            xaxis = self.ax2
 
         ## CMS label
         if self.CMSlabel is not None:
@@ -104,6 +100,10 @@ class HepPlotterHist1D(HepPlotter):
 
         ## Legend
         self.drawLegend()
+
+        ## Axis labels
+        self.set_xaxis(xaxis)
+        self.set_yaxis()
 
         return fig
 
@@ -119,7 +119,7 @@ class HepPlotterHist1D(HepPlotter):
         bin_center = h_data.center
 
         # if global value for 'normed' is True, set all histograms to 'normed'=True
-        # unless a kwarg is passed to override this
+        # unless a kwarg is passed to override this (e.g., the ratio plot isn't normalized)
         if self.normed and not ('normed' in kwargs):
             bar2plot.normed = True
 
@@ -129,6 +129,12 @@ class HepPlotterHist1D(HepPlotter):
             original_data  = data.copy()
             data,bin_edges = np.histogram(bin_center,bins=bins,weights=data,density=True)
             error = error * (data/original_data)  # scale error bars appropriately
+
+        # Modify axis scale
+        # set log scale if global parameter is set, unless kwarg overrides it
+        if not ('logplot' in kwargs):
+            if self.logplot["y"]: axis.set_yscale('log')
+        if self.logplot["x"]: axis.set_xscale('log')
 
         p,c,b = axis.errorbar(bin_center,data,yerr=error,fmt=bar2plot.fmt,
                               label=bar2plot.label,
@@ -154,7 +160,7 @@ class HepPlotterHist1D(HepPlotter):
 
         # if global value for 'normed' is True, set all histograms to 'normed'=True
         # unless a kwarg is passed to override this
-        if self.normed and not kwargs.get("normed"):
+        if self.normed and not ('normed' in kwargs):
             histogram.kwargs["density"] = True
 
         this_label = histogram.label
@@ -174,7 +180,10 @@ class HepPlotterHist1D(HepPlotter):
                              edgecolor=histogram.edgecolor,
                              **histogram.kwargs)
 
-        if self.logplot["y"]: axis.set_yscale('log')
+        # Modify axis scale
+        # set log scale if global parameter is set, unless kwarg overrides it
+        if not ('logplot' in kwargs):
+            if self.logplot["y"]: axis.set_yscale('log')
         if self.logplot["x"]: axis.set_xscale('log')
 
         histogram.plotData = data
@@ -184,24 +193,6 @@ class HepPlotterHist1D(HepPlotter):
             self.plotUncertainty(histogram,axis)
 
         return histogram
-
-
-    def drawLegend(self,axis=None):
-        """Draw the legend"""
-        if axis is None: axis = self.ax1
-
-        # get items in the legend (can re-order them here)
-        handles, labels = axis.get_legend_handles_labels()
-
-        # Check for extra kwargs the user may have added to override defaults
-        kwargs = dict( (k,self.legend[k]) for k in self.legend if (k!="ncol" and k!='draw_frame'))
-        
-        if self.legend['ncol']<0: self.legend['ncol'] = 1 if len(handles)<4 else 2
-
-        leg = axis.legend(handles,labels,ncol=self.legend["ncol"],**kwargs)
-        leg.draw_frame(self.legend['draw_frame'])
-
-        return
 
 
 
@@ -270,14 +261,15 @@ class HepPlotterHist1D(HepPlotter):
                     ratio_data.data.content[inf_ind] = np.nan
                     ratio_data.kwargs["xerr"] = numerator.data.width
 
-                    self.plotErrorbars(ratio_data,axis=self.ax2,normed=False)
+                    self.plotErrorbars(ratio_data,axis=self.ax2,normed=False,logplot=False)
                 else:
                     # remove NaN/inf values from hist
                     content = ratio_data.data.content
                     nan_inf_ind = np.where( np.isnan(content) or np.isinf(content) )
                     ratio_data.data.content[nan_inf_ind] = 0.
 
-                    self.plotHistograms(ratio_data,axis=self.ax2,uncertainty=True,normed=False)
+                    self.plotHistograms(ratio_data,axis=self.ax2,uncertainty=True,
+                                        normed=False,logplot=False)
 
             ## Ratio Uncertainties
             if self.drawStatUncertainty:
@@ -293,8 +285,9 @@ class HepPlotterHist1D(HepPlotter):
         self.ax2.set_ylim(  self.ratio_ylims[self.ratio_plot])
         self.ax2.set_ylabel(self.y_label_ratio,ha='center',va='bottom')
 
-        self.ax2.set_yticklabels(np.array(["{0}" for _ in axis_ticks]))
-        self.ax2.yaxis.set_major_formatter(FormatStrFormatter('%g'))
+        # Modify tick labels
+        formatter = FormatStrFormatter('%g')
+        self.ax2.set_yticklabels(np.array([formatter(i) for i in axis_ticks]))
 
         return
 
@@ -339,6 +332,25 @@ class HepPlotterHist1D(HepPlotter):
 
             axis.fill_between(fill_between_bins,resid_unc['dn'],resid_unc['up'],
                               zorder=10,color=hist.color,**hist.kwargs)
+
+        return
+
+
+
+    def drawLegend(self,axis=None):
+        """Draw the legend"""
+        if axis is None: axis = self.ax1
+
+        # get items in the legend (can re-order them here)
+        handles, labels = axis.get_legend_handles_labels()
+
+        # Check for extra kwargs the user may have added to override defaults
+        kwargs = dict( (k,self.legend[k]) for k in self.legend if (k!="ncol" and k!='draw_frame'))
+
+        if self.legend['ncol']<0: self.legend['ncol'] = 1 if len(handles)<4 else 2
+
+        leg = axis.legend(handles,labels,ncol=self.legend["ncol"],**kwargs)
+        leg.draw_frame(self.legend['draw_frame'])
 
         return
 

@@ -149,8 +149,6 @@ class HepPlotterEff1D(HepPlotterHist1D):
 
     def drawPhysics(self,data2plot,axis=None):
         """Along with the efficiency curve, draw the physics distribution on twin axis"""
-        self.yTwinMinorLocator = AutoMinorLocator()
-
         if axis is None: axis = self.ax1
         axis_twin = axis.twinx()
 

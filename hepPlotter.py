@@ -31,7 +31,7 @@ mpl.style.use('{0}/cms.mplstyle'.format(os.path.dirname(os.path.abspath(__file__
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
 from matplotlib.colors import LogNorm
-from matplotlib.ticker import AutoMinorLocator,FormatStrFormatter
+from matplotlib.ticker import AutoMinorLocator,FormatStrFormatter,MaxNLocator
 
 import tools
 import labels
@@ -131,14 +131,7 @@ class HepPlotter(object):
             print " WARNING : Chosen format '{0}' may conflict with backend".format(self.format)
 
         if not self.axis_scale:
-            self.axis_scale = {'y':1.3,'x':1.0}
-
-        # draw minor ticks in the 'right' places
-        self.x1minorLocator = AutoMinorLocator()
-        self.y1minorLocator = AutoMinorLocator()
-        self.x2minorLocator = AutoMinorLocator()
-        self.y2minorLocator = AutoMinorLocator()
-        self.yTwinMinorLocator = AutoMinorLocator()   # twin axis for efficiency plots
+            self.axis_scale = {'y':1.4,'x':1.0}
 
         return
 
@@ -239,15 +232,15 @@ class HepPlotter(object):
         axis.set_xlabel(self.x_label,ha='right',va='top',position=(1,0))
 
         # Modify tick labels
+        formatter  = FormatStrFormatter('%g')
         axis_ticks = axis.get_xticks()
 
         if self.logplot["x"]:
             tick_labels = [r"10$^{\text{%s}}$"%(int(np.log10(i))) if i>0 else '' for i in axis_ticks]
         else:
-            tick_labels = ["{0}" for _ in axis_ticks]
+            tick_labels = [formatter(i) for i in axis_ticks]
 
         axis.set_xticklabels(tick_labels)
-        axis.xaxis.set_major_formatter(FormatStrFormatter('%g'))
 
         return
 
@@ -264,15 +257,17 @@ class HepPlotter(object):
         self.ax1.set_ylabel(self.y_label,ha='right',va='bottom',position=(0,1))
 
         # Modify tick labels
+        formatter  = FormatStrFormatter('%g')
         axis_ticks = self.ax1.get_yticks()
 
         if self.logplot["y"]:
             tick_labels = [r"10$^{\text{%s}}$"%(int(np.log10(i))) if i>0 else '' for i in axis_ticks]
+            tick_labels = ["",""]+tick_labels[2:]
         else:
-            tick_labels = ["{0}".format(i) for i in axis_ticks]
+            tick_labels = [formatter(i) for i in axis_ticks]
+            tick_labels = [""]+tick_labels[1:]
 
-        self.ax1.set_yticklabels( [""]+tick_labels[1:] )
-        self.ax1.yaxis.set_major_formatter(FormatStrFormatter('%g'))
+        self.ax1.set_yticklabels( tick_labels )
 
         return
 

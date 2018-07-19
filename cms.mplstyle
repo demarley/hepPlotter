@@ -21,6 +21,14 @@ lines.marker      : None    # the default marker
 lines.markersize  : 10      # markersize, in points
 
 
+### LaTeX customizations. See http://wiki.scipy.org/Cookbook/Matplotlib/UsingTex
+text.usetex         : true                    # LaTeX formatting for labels and such
+text.latex.unicode  : true
+text.latex.preamble : \usepackage{amsmath},\usepackage{tgheros},\usepackage{sansmath},\usepackage{siunitx},\sisetup{detect-all}
+#text.latex.preamble :  \usepackage{amsmath},\usepackage{tgheros},\usepackage{sansmath},\sansmath,\usepackage{siunitx},\sisetup{detect-all}
+
+
+
 ### FONT
 # font properties used by text.Text.  See
 # http://matplotlib.org/api/font_manager_api.html for more
@@ -36,10 +44,6 @@ font.sans-serif     : Helvetica
 # http://matplotlib.org/api/artist_api.html#module-matplotlib.text for more
 # information on text properties
 text.color          : black
-
-### LaTeX customizations. See http://wiki.scipy.org/Cookbook/Matplotlib/UsingTex
-text.usetex         : True                    # LaTeX formatting for labels and such
-text.latex.preamble :  \usepackage{amsmath},\usepackage{tgheros},\usepackage{sansmath},\sansmath,\usepackage{siunitx},\sisetup{detect-all}
 
 
 ### AXES

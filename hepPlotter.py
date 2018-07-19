@@ -33,8 +33,8 @@ from matplotlib import gridspec
 from matplotlib.colors import LogNorm
 from matplotlib.ticker import AutoMinorLocator,FormatStrFormatter
 
-import hepPlotterTools as hpt
-import hepPlotterLabels as hpl
+import tools
+import labels
 
 
 
@@ -49,8 +49,10 @@ class HepPlotterData(object):
         self.edgecolor = 'k'
         self.linestyle = '-'
         self.linewidth = 2
+        self.ecolor = 'k'
         self.markeredgecolor = 'k'
         self.markerfacecolor = 'k'
+        self.markersize = 6
         self.label  = ''
         self.data   = None
         self.normed = False
@@ -84,7 +86,6 @@ class HepPlotter(object):
 
         # customizable options
         self.dimensions = dimensions  # number of dimensions in histogram
-        self.ratio_plot = ""          # "ratio","significance": plot a ratio of things
         self.stacked    = False       # stack plots (1D only)
         self.normed     = False       # globally set histograms to be normalized
         self.binning    = 20          # integer for number of bins, or list for non-uniform bins
@@ -99,8 +100,7 @@ class HepPlotter(object):
         self.axis_scale = {}          # scale axes (mainly the y-axis to accommodate legend/labels
         self.x_label = 'x'
         self.y_label = 'y'
-        self.y_label_ratio = self.ratio_plot
-        self.extra_text  = hpl.PlotText()
+        self.extra_text  = labels.PlotText()
         self.lumi     = '14.7'
         self.plotLUMI = False
         self.CMSlabel = None                 # 'top left', 'top right' & 'outer' for 2D
@@ -109,11 +109,10 @@ class HepPlotter(object):
         self.saveAs = "plot{0}D_{1}".format(self.dimensions,self.CMSlabelStatus) # save figure with name
         self.drawStatUncertainty = False
         self.drawUncertaintyMain = False  # draw uncertainties in the top frame
-        self.legend  = {"ncol":2}
         self.logplot = {"y":False,"x":False,"data":False}  # plot axes or data (2D) on log scale
 
-        self.text_coords = {'top left': {'x':[0.03]*3,        'y':[0.97,0.90,0.83]},\
-                            'top right':{'x':[0.97]*3,        'y':[0.97,0.90,0.83]},\
+        self.text_coords = {'top left': {'x':[0.03]*3,        'y':[0.96,0.89,0.82]},\
+                            'top right':{'x':[0.97]*3,        'y':[0.96,0.89,0.82]},\
                             'outer':    {'x':[0.02,0.99,0.99],'y':[1.0,1.0,0.9]}}
 
         return
@@ -131,6 +130,9 @@ class HepPlotter(object):
         if self.format!='pdf': 
             print " WARNING : Chosen format '{0}' may conflict with backend".format(self.format)
 
+        if not self.axis_scale:
+            self.axis_scale = {'y':1.3,'x':1.0}
+
         # draw minor ticks in the 'right' places
         self.x1minorLocator = AutoMinorLocator()
         self.y1minorLocator = AutoMinorLocator()
@@ -142,7 +144,7 @@ class HepPlotter(object):
 
 
 
-    def setDefaults(self,hist,**kwargs):
+    def setParameters(self,hist,**kwargs):
         """
         Set parameters passed by the user to the plot.
         For matplotlib arguments with multiple keywords, cross-check them here
@@ -151,6 +153,7 @@ class HepPlotter(object):
                          "ls":"linestyle",
                          "lw":"linewidth",
                          "ec":"edgecolor",
+                         "ms":"markersize",
                          "mec":"markeredgecolor",
                          "mfc":"markerfacecolor"}
         kwargs_keys = kwargs.keys()
@@ -187,24 +190,24 @@ class HepPlotter(object):
         hist = HepPlotterData()
         hist.name = name
 
-        self.setParameters(hist,kwargs)
+        self.setParameters(hist,**kwargs)
 
         # convert data for internal use (uniform I/O)
         if isinstance(data,ROOT.TH1):
             if not kwargs.get("isTH1"): hist.isTH1 = True   # plot TH1/TH2
             if self.dimensions==1:
-                h_data = hpt.hist2list(data,name=name,reBin=self.rebin,normed=hist.normed)
+                h_data = tools.hist2list(data,name=name,reBin=self.rebin,normed=hist.normed)
             else:
-                h_data = hpt.hist2list2D(data,name=name,reBin=self.rebin,normed=hist.normed)
+                h_data = tools.hist2list2D(data,name=name,reBin=self.rebin,normed=hist.normed)
         elif isinstance(data,ROOT.TEfficiency):
             if not kwargs.get("isTEff"): hist.isTEff = True # plot TEfficiency
-            h_data = hpt.TEfficiency2list(data)
+            h_data = tools.TEfficiency2list(data)
         else:
             # others, e.g., numpy data that needs to be put into a histogram
             if self.dimensions==1:
-                h_data = hpt.data2list(data,weights=weights,normed=hist.normed,binning=self.binning)
+                h_data = tools.data2list(data,weights=weights,normed=hist.normed,binning=self.binning)
             else:
-                h_data = hpt.data2list2D(data,weights=weights,normed=hist.normed,binning=self.binning)
+                h_data = tools.data2list2D(data,weights=weights,normed=hist.normed,binning=self.binning)
         ## FUTURE:
         ## Add support for data that doesn't need to be put into a histogram (line data)
 
@@ -226,6 +229,55 @@ class HepPlotter(object):
 
 
 
+    def set_xaxis(self,axis=None):
+        """Modify the x-axis"""
+        if axis is None: axis=self.ax1
+
+        if self.xlim is not None:
+            axis.set_xlim(self.xlim)
+
+        axis.set_xlabel(self.x_label,ha='right',va='top',position=(1,0))
+
+        # Modify tick labels
+        axis_ticks = axis.get_xticks()
+
+        if self.logplot["x"]:
+            tick_labels = [r"10$^{\text{%s}}$"%(int(np.log10(i))) if i>0 else '' for i in axis_ticks]
+        else:
+            tick_labels = ["{0}" for _ in axis_ticks]
+
+        axis.set_xticklabels(tick_labels)
+        axis.xaxis.set_major_formatter(FormatStrFormatter('%g'))
+
+        return
+
+
+
+    def set_yaxis(self):
+        """Modify the y-axis"""
+        if self.ylim is not None:
+            self.ax1.set_ylim(self.ylim)
+        else:
+            ymax_scale = self.axis_scale['y']
+            self.ax1.set_ylim(0.,ymax_scale*self.ax1.get_ylim()[1])  # scale axis to accommodate legend/text
+
+        self.ax1.set_ylabel(self.y_label,ha='right',va='bottom',position=(0,1))
+
+        # Modify tick labels
+        axis_ticks = self.ax1.get_yticks()
+
+        if self.logplot["y"]:
+            tick_labels = [r"10$^{\text{%s}}$"%(int(np.log10(i))) if i>0 else '' for i in axis_ticks]
+        else:
+            tick_labels = ["{0}".format(i) for i in axis_ticks]
+
+        self.ax1.set_yticklabels( [""]+tick_labels[1:] )
+        self.ax1.yaxis.set_major_formatter(FormatStrFormatter('%g'))
+
+        return
+
+
+
     def text_labels(self,axis=None):
         """Labels for CMS plots"""
         if self.dimensions==2 and self.CMSlabel!='outer':
@@ -238,21 +290,22 @@ class HepPlotter(object):
         text = self.text_coords[self.CMSlabel]
 
         ## CMS, Energy, and LUMI labels
-        cms_stamp    = hpl.CMSStamp(self.CMSlabelStatus)
-        lumi_stamp   = hpl.LumiStamp(self.lumi)
-        energy_stamp = hpl.EnergyStamp()
+        cms_stamp    = labels.CMSStamp(self.CMSlabelStatus)
 
-        cms_stamp.coords    = [text['x'][0], text['y'][0]]
-        lumi_stamp.coords   = [text['x'][1], text['y'][1]]  # always drawn with the energy
-        energy_stamp.coords = [text['x'][1], text['y'][1]]
+        cms_stamp.coords = [text['x'][0], text['y'][0]]
+        if self.CMSlabel == 'top right': cms_stamp.ha = 'right'
+        if self.dimensions==2:           cms_stamp.va = 'bottom'   # change alignment for 2d labels
 
-        # modify defaults
-        if self.CMSlabel == 'top right':
-            cms_stamp.ha = 'right'
-        if self.dimensions==2:
-            cms_stamp.va    = 'bottom'   # change alignment for 2d labels
-            lumi_stamp.ha   = 'right'
-            energy_stamp.ha = 'right'
+        energy_stamp = labels.EnergyStamp()
+        energy_stamp.coords = [0.99,1.0]
+        energy_stamp.ha = 'right'
+        energy_stamp.va = 'bottom'
+
+        # only need this if self.plotLUMI is True and you aren't writing the energy
+        lumi_stamp = labels.LumiStamp(self.lumi)
+        lumi_stamp.coords = [0.99,1.0]  # drawn with energy
+        lumi_stamp.ha = 'right'
+        lumi_stamp.va = 'bottom'
 
 
         axis.text(cms_stamp.coords[0],cms_stamp.coords[1],cms_stamp.text,fontsize=cms_stamp.fontsize,
@@ -277,8 +330,7 @@ class HepPlotter(object):
 
     def savefig(self):
         """Save the figure"""
-        plt.savefig(self.saveAs+'.'+self.format,
-                    format=self.format,dpi=300,bbox_inches='tight')
+        plt.savefig(self.saveAs+'.'+self.format)
         plt.close()
 
         return

@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 import numpy as np
 
-import hepPlotterTools as hpt
+import tools
 
 
 
@@ -65,25 +65,26 @@ class HepPlotter2D(HepPlotter):
         """
         fig,self.ax1 = plt.subplots()
 
-        name         = self.data2plot.keys()[0]
-        data2plot    = self.data2plot[name]     # only one histogram is supported in 2D plots
+        name      = self.data2plot.keys()[0]
+        data2plot = self.data2plot[name]     # only one histogram is supported in 2D plots
 
-        h_data       = data2plot.data
-        h_error      = data2plot.error
-        x_bin_center = data2plot.center['x']
-        y_bin_center = data2plot.center['y']
-        binns_x      = data2plot.bins['x']
-        binns_y      = data2plot.bins['y']
+        h_data = data2plot.data
+        data   = h_data.content
+        error  = h_data.error
+        bins_x = h_data.bins['x']
+        bins_y = h_data.bins['y']
+        x_bin_center = h_data.center['x']
+        y_bin_center = h_data.center['y']
 
         # Make the plot
         norm2d = LogNorm() if self.logplot['data'] else None
 
-        plt.hist2d(x_bin_center,y_bin_center,bins=[binns_x,binns_y],
-                   weights=h_data,cmap=self.colormap,norm=norm2d,**data2plot.kwargs)
+        plt.hist2d(x_bin_center,y_bin_center,bins=[bins_x,bins_y],
+                   weights=data,cmap=self.colormap,norm=norm2d,**data2plot.kwargs)
 
         # Plot bin values/errors, if requested
-        if self.bin_yields: self.plotBinYields(h_data, x_bin_center,y_bin_center)
-        if self.bin_errors: self.plotBinErrors(h_error,x_bin_center,y_bin_center)
+        if self.bin_yields: self.plotBinYields(data, x_bin_center,y_bin_center)
+        if self.bin_errors: self.plotBinErrors(error,x_bin_center,y_bin_center)
 
         # Configure the colorbar
         self.drawColorbar()
@@ -170,7 +171,7 @@ class HepPlotter2D(HepPlotter):
                 print " WARNING : Unsupported colormap '{0}'".format(self.colormap)
                 print "           Choosing the colormap based on data structure "
 
-                datastructure = hpt.getDataStructure( h.data.data )
+                datastructure = tools.getDataStructure( h.data.data )
                 self.colormap = getattr( plt.cm,datastructure )
 
         return

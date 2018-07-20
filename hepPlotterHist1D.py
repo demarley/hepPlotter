@@ -162,7 +162,6 @@ class HepPlotterHist1D(HepPlotter):
         # unless a kwarg is passed to override this
         if self.normed and not ('normed' in kwargs):
             histogram.kwargs["density"] = True
-            print histogram.kwargs
 
         this_label = histogram.label
         if histogram.draw_type=='step':
@@ -173,11 +172,6 @@ class HepPlotterHist1D(HepPlotter):
                           ls=histogram.linestyle,label=histogram.label)
 
         # Make the histogram
-        print histogram.linestyle,histogram.linewidth
-        print bin_center
-        print binning
-        print data.tolist()
-        print histogram.kwargs
         data,b,p = axis.hist(bin_center,bins=binning,weights=data,
                              label=this_label,
                              lw=histogram.linewidth,histtype=histogram.draw_type,

@@ -63,7 +63,7 @@ def getDataStructure(h_data):
     min_value = min(h_data)
 
     ## linear (same sign)
-    if max_value*min_value > 0:
+    if max_value*min_value >= 0:
         if max_value>0:
             colormap = "Reds"    # positive values
         else:

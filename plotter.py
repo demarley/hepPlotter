@@ -30,15 +30,14 @@ mpl.style.use('{0}/cms.mplstyle'.format(os.path.dirname(os.path.abspath(__file__
 
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
-from matplotlib.colors import LogNorm
-from matplotlib.ticker import AutoMinorLocator,FormatStrFormatter,MaxNLocator
+from matplotlib.ticker import FormatStrFormatter
 
 import tools
 import labels
 
 
 
-class HepPlotterData(object):
+class PlotterData(object):
     """Class for containing data objects to plot"""
     def __init__(self):
         """The following are nominal attributes of the class with common parameters"""
@@ -65,15 +64,11 @@ class HepPlotterData(object):
         self.isLinePlot  = False  # basic plt.plot() -- not supported yet
         self.isTH1  = False       # ROOT Histogram
         self.isTEff = False       # ROOT TEfficiency
-        self.ratios = []          # which other data to plot with as a ratio
-                                  # stored as (partner,True/False) where
-                                  #   'partner'  = other data
-                                  #   True/False = Numerator/Denominator
         self.kwargs = {}          # extra kwargs for plotting
 
 
 
-class HepPlotter(object):
+class Plotter(object):
     def __init__(self,dimensions):
         """
         @param typeOfPlot    Set the kind of plot: histogram or efficiency
@@ -93,8 +88,6 @@ class HepPlotter(object):
         self.label_size = 20          # text labels on plot
         self.underflow  = False       # plot the underflow
         self.overflow   = False       # plot the overflow
-        self.colormap   = None        # 2D plot colormap
-        self.colorbar   = {}          # parameters for colorbar on 2D plot
         self.xlim       = None        # tuple for (xmin,xmax)
         self.ylim       = None        # tuple for (ymin,ymax)
         self.axis_scale = {}          # scale axes (mainly the y-axis to accommodate legend/labels
@@ -106,8 +99,8 @@ class HepPlotter(object):
         self.CMSlabel = None                 # 'top left', 'top right' & 'outer' for 2D
         self.CMSlabelStatus = 'Internal'     # ('Simulation')+'Internal' || 'Preliminary'
         self.format = 'pdf'                  # file format for saving image
-        self.saveAs = "plot{0}D_{1}".format(self.dimensions,self.CMSlabelStatus) # save figure with name
-        self.drawUncertaintyMain = False  # draw uncertainties in the top frame
+        self.saveAs = "result"               # save figure with name
+        self.drawUncertaintyMain = False     # draw uncertainties in the top frame
         self.logplot = {"y":False,"x":False,"data":False}  # plot axes or data (2D) on log scale
 
         self.text_coords = {'top left': {'x':[0.03]*3,        'y':[0.96,0.89,0.82]},\
@@ -131,6 +124,7 @@ class HepPlotter(object):
 
         if not self.axis_scale:
             self.axis_scale = {'y':1.4,'x':1.0}
+            if self.dimensions==2: self.axis_scale['y'] = 1.0
 
         return
 
@@ -162,6 +156,8 @@ class HepPlotter(object):
                 _ = kwargs.pop(k)                           # remove from kwargs
 
         hist.kwargs      = kwargs                           # set user-defined arguments
+
+        # relevant for 1-dimension plots
         hist.isHistogram = (hist.draw_type in ['step','stepfilled'])
         hist.isErrorbar  = (hist.draw_type == 'errorbar')
 
@@ -180,7 +176,7 @@ class HepPlotter(object):
                    -- errorbar: https://matplotlib.org/api/_as_gen/matplotlib.pyplot.errorbar.html
                    -- lineplot: https://matplotlib.org/api/_as_gen/matplotlib.pyplot.plot.html
         """
-        hist = HepPlotterData()
+        hist = PlotterData()
         hist.name = name
 
         self.setParameters(hist,**kwargs)

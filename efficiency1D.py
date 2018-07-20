@@ -19,7 +19,7 @@ Here we just plot the 1D data we're given.
 from math import fabs
 from copy import deepcopy
 
-from hepPlotterHist1D import HepPlotterHist1D
+from histogram1D import Histogram1D
 
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
@@ -27,13 +27,10 @@ import numpy as np
 
 
 
-class HepPlotterEff1D(HepPlotterHist1D):
-    """One dimensional histogram with HepPlotter formatting and structure"""
+class Efficiency1D(Histogram1D):
+    """One dimensional histogram with HEP plotter formatting and structure"""
     def __init__(self):       
-        HepPlotterHist1D.__init__(self)
-        # extra options
-        self.CMSlabel = 'top left'
-
+        PlotterHist1D.__init__(self)
         return
 
 

@@ -19,7 +19,7 @@ Here we just plot the 1D data we're given.
 from math import fabs
 from copy import deepcopy
 
-from hepPlotter import HepPlotter,HepPlotterData
+from plotter import Plotter,PlotterData
 import tools
 
 import matplotlib.pyplot as plt
@@ -30,14 +30,14 @@ import numpy as np
 
 
 
-class HepPlotterHist1D(HepPlotter):
-    """One dimensional histogram with HepPlotter formatting and structure"""
+class Histogram1D(Plotter):
+    """One dimensional histogram with HEP plotter formatting and structure"""
     def __init__(self):       
-        HepPlotter.__init__(self,1)
+        Plotter.__init__(self,1)
         # extra options
         self.CMSlabel = 'top left'
         self.legend   = {"ncol":-1,"draw_frame":False}
-        self.ratio    = HepPlotterRatio()
+        self.ratio    = PlotterRatio()
 
         return
 
@@ -335,7 +335,7 @@ class HepPlotterHist1D(HepPlotter):
 
 
 
-class HepPlotterRatio(object):
+class PlotterRatio(object):
     """Simple class to contain information for ratio plot"""
     def __init__(self):
         self.ratios2plot  = []   # list of dictionaries containing information for ratio

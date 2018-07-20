@@ -107,7 +107,6 @@ class HepPlotter(object):
         self.CMSlabelStatus = 'Internal'     # ('Simulation')+'Internal' || 'Preliminary'
         self.format = 'pdf'                  # file format for saving image
         self.saveAs = "plot{0}D_{1}".format(self.dimensions,self.CMSlabelStatus) # save figure with name
-        self.drawStatUncertainty = False
         self.drawUncertaintyMain = False  # draw uncertainties in the top frame
         self.logplot = {"y":False,"x":False,"data":False}  # plot axes or data (2D) on log scale
 
@@ -162,18 +161,19 @@ class HepPlotter(object):
                 setattr( hist,mult_keywords[k],kwargs[k] )  # overwrite default
                 _ = kwargs.pop(k)                           # remove from kwargs
 
-        hist.kwargs = kwargs                                # set user-defined arguments
+        hist.kwargs      = kwargs                           # set user-defined arguments
+        hist.isHistogram = (hist.draw_type in ['step','stepfilled'])
+        hist.isErrorbar  = (hist.draw_type == 'errorbar')
 
         return
 
 
-    def Add(self,data,name='',weights=None,ratios=None,**kwargs):
+    def Add(self,data,name='',weights=None,**kwargs):
         """
         Add histogram data for this figure.
         @param data             data for plot (python array or ROOT TH1)
         @param name             name to identify histogram object
         @param weights          weights for making histogram data
-        @param ratios           plot in ratios: {"partner":True/False} for numerator/denominator
         @param kwargs           arguments for matplotlib options
                    -- hist:     https://matplotlib.org/api/_as_gen/matplotlib.pyplot.hist.html
                    -- hist2d:   https://matplotlib.org/api/_as_gen/matplotlib.pyplot.hist2d.html
@@ -196,7 +196,7 @@ class HepPlotter(object):
             if not kwargs.get("isTEff"): hist.isTEff = True # plot TEfficiency
             h_data = tools.TEfficiency2list(data)
         else:
-            # others, e.g., numpy data that needs to be put into a histogram
+            # others, e.g., numpy data (may or may not need to be put into a histogram)
             if self.dimensions==1:
                 h_data = tools.data2list(data,weights=weights,normed=hist.normed,binning=self.binning)
             else:
@@ -204,13 +204,8 @@ class HepPlotter(object):
         ## FUTURE:
         ## Add support for data that doesn't need to be put into a histogram (line data)
 
-        hist.isHistogram = (hist.draw_type in ['step','stepfilled'])
-        hist.isErrorbar  = (hist.draw_type == 'errorbar')
-        hist.ratios = ratios
-        hist.data   = h_data
-
-        # store in this list to use throughout the class
-        self.data2plot[name] = hist
+        hist.data = h_data
+        self.data2plot[name] = hist   # store in this in a dictionary
 
         return
 
@@ -225,6 +220,8 @@ class HepPlotter(object):
     def set_xaxis(self,axis=None):
         """Modify the x-axis"""
         if axis is None: axis=self.ax1
+
+        if self.logplot["x"]: axis.set_xscale('log')
 
         if self.xlim is not None:
             axis.set_xlim(self.xlim)
@@ -248,6 +245,8 @@ class HepPlotter(object):
 
     def set_yaxis(self):
         """Modify the y-axis"""
+        if self.logplot["y"]: self.ax1.set_yscale('log')
+
         if self.ylim is not None:
             self.ax1.set_ylim(self.ylim)
         else:

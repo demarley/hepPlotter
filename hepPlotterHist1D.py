@@ -28,6 +28,8 @@ from matplotlib.ticker import FormatStrFormatter
 import numpy as np
 
 
+
+
 class HepPlotterHist1D(HepPlotter):
     """One dimensional histogram with HepPlotter formatting and structure"""
     def __init__(self):       
@@ -35,13 +37,10 @@ class HepPlotterHist1D(HepPlotter):
         # extra options
         self.CMSlabel = 'top left'
         self.legend   = {"ncol":-1,"draw_frame":False}
-
-        self.ratio_plot    = ""
-        self.y_label_ratio = "Ratio"
-        self.ratio_ylims   = {'ratio':(0.5,1.5),'significance':(0.0,None)}
-        self.ratio_yticks  = np.array([0.6,1.0,1.4])
+        self.ratio    = HepPlotterRatio()
 
         return
+
 
 
     def execute(self):
@@ -49,37 +48,57 @@ class HepPlotterHist1D(HepPlotter):
         Make the plot!
         return the Figure object to the user (they can edit it if they please)
         """
-        if self.ratio_plot:
+        draw_ratio = False
+        if len(self.ratio.ratios2plot)>0:
             fig = plt.figure()
             gs  = gridspec.GridSpec(2,1,height_ratios=[3,1],hspace=0.0)
             self.ax1 = fig.add_subplot(gs[0])
             self.ax2 = fig.add_subplot(gs[1],sharex=self.ax1)
             plt.setp(self.ax1.get_xticklabels(),visible=False)
 
-            self.ylim_ratio = self.ratio_ylims[self.ratio_plot]
+            draw_ratio = True
         else:
             fig,self.ax1 = plt.subplots()
 
+        # separate data into errorbars and histograms
+        bars2plot  = [self.data2plot[e] for e in self.data2plot if self.data2plot[e].isErrorbar]
+        hists2plot = [self.data2plot[e] for e in self.data2plot if self.data2plot[e].isHistogram]
+
 
         ##  Errorbars (should be in foreground:  start with zorder 150)
-        bars2plot = [self.data2plot[e] for e in self.data2plot if self.data2plot[e].isErrorbar]
-
         for n,bar2plot in enumerate(bars2plot):
             bar2plot.kwargs["zorder"] = 150+n
 
+            # if global value for 'normed' is True, override object setting
+            # need to remake content using histogram (no 'density' kwarg in plt.errorbar())
+            if self.normed or bar2plot.normed:
+                bar2plot.normed = True
+
+                h_data  = bar2plot.data
+                og_data = h_data.content.copy()
+                data,be = np.histogram(h_data.center,bins=h_data.bins,
+                                       weights=og_data,density=True)
+                error = h_data.error * (data/og_data)  # scale error bars
+                bar2plot.data.content = data
+                bar2plot.data.error   = error
+
             tmp_barplot  = self.plotErrorbars(bar2plot)
-            bars2plot[n] = tmp_barplot
+            bars2plot[n] = tmp_barplot            # update data
+
 
         ##  Histograms (should be in background: start with zorder 100)
-        hists2plot = [self.data2plot[e] for e in self.data2plot if self.data2plot[e].isHistogram]
-
         bottom = None                             # 'bottom' for stacking histograms
         for n,hist2plot in enumerate(hists2plot):
             hist2plot.kwargs["zorder"] = 100+n
             hist2plot.kwargs["bottom"] = bottom if self.stacked else None
 
+            # if global value for 'normed' is True, override object setting
+            if self.normed or hist2plot.normed:
+                hist2plot.normed = True
+                hist2plot.kwargs["density"] = True
+
             tmp_hist2plot = self.plotHistograms(hist2plot,uncertainty=self.drawUncertaintyMain)
-            hists2plot[n] = tmp_hist2plot
+            hists2plot[n] = tmp_hist2plot         # update data
 
             if n==0: bottom  = hist2plot.plotData # modify 'bottom' for stacked plots
             else:    bottom += hist2plot.plotData
@@ -88,11 +107,15 @@ class HepPlotterHist1D(HepPlotter):
         for i in hists2plot: self.data2plot[i.name] = i
         for i in bars2plot:  self.data2plot[i.name] = i
 
-        ## ratio plot (common to many plots)
+        ## ratio plot
         xaxis = None
-        if self.ratio_plot:
-            self.plotRatio()
-            xaxis = self.ax2
+        if draw_ratio:
+            self.plotRatio()              # make the ratio plot
+            xaxis = self.ax2              # draw ratio plot xaxis instead of self.ax1
+
+        ## Axis ticks/labels
+        self.set_xaxis(xaxis)
+        self.set_yaxis()
 
         ## CMS label
         if self.CMSlabel is not None:
@@ -100,10 +123,6 @@ class HepPlotterHist1D(HepPlotter):
 
         ## Legend
         self.drawLegend()
-
-        ## Axis labels
-        self.set_xaxis(xaxis)
-        self.set_yaxis()
 
         return fig
 
@@ -118,24 +137,6 @@ class HepPlotterHist1D(HepPlotter):
         bins   = h_data.bins
         bin_center = h_data.center
 
-        # if global value for 'normed' is True, set all histograms to 'normed'=True
-        # unless a kwarg is passed to override this (e.g., the ratio plot isn't normalized)
-        if self.normed and not ('normed' in kwargs):
-            bar2plot.normed = True
-
-        # if the errorbar plot needs to be normalized, 
-        # you need to make a histogram from the data, then plot the errorbar
-        if hasattr(bar2plot,"normed") and bar2plot.normed:
-            original_data  = data.copy()
-            data,bin_edges = np.histogram(bin_center,bins=bins,weights=data,density=True)
-            error = error * (data/original_data)  # scale error bars appropriately
-
-        # Modify axis scale
-        # set log scale if global parameter is set, unless kwarg overrides it
-        if not ('logplot' in kwargs):
-            if self.logplot["y"]: axis.set_yscale('log')
-        if self.logplot["x"]: axis.set_xscale('log')
-
         p,c,b = axis.errorbar(bin_center,data,yerr=error,fmt=bar2plot.fmt,
                               label=bar2plot.label,
                               ecolor=bar2plot.ecolor,
@@ -148,6 +149,7 @@ class HepPlotterHist1D(HepPlotter):
         return bar2plot
 
 
+
     def plotHistograms(self,histogram,axis=None,uncertainty=False,**kwargs):
         """Plot histograms"""
         if axis is None: axis = self.ax1
@@ -157,13 +159,8 @@ class HepPlotterHist1D(HepPlotter):
         error   = h_data.error
         binning = h_data.bins
         bin_center = h_data.center
-
-        # if global value for 'normed' is True, set all histograms to 'normed'=True
-        # unless a kwarg is passed to override this
-        if self.normed and not ('normed' in kwargs):
-            histogram.kwargs["density"] = True
-
         this_label = histogram.label
+
         if histogram.draw_type=='step':
             # Changing legend for step histograms -> a line instead of a rectangle
             this_label = None
@@ -179,18 +176,12 @@ class HepPlotterHist1D(HepPlotter):
                              color=histogram.color,
                              edgecolor=histogram.edgecolor,
                              **histogram.kwargs)
-
-        # Modify axis scale
-        # set log scale if global parameter is set, unless kwarg overrides it
-        if not ('logplot' in kwargs):
-            if self.logplot["y"]: axis.set_yscale('log')
-        if self.logplot["x"]: axis.set_xscale('log')
-
         histogram.plotData = data
 
         # only use this for histograms because errorbar has 'yerr' option
-        if self.drawStatUncertainty and uncertainty:
-            self.plotUncertainty(histogram,axis)
+        if uncertainty:
+            norm = kwargs.get('norm_uncertainty',False)
+            self.plotUncertainty(histogram,axis,normalize=norm)
 
         return histogram
 
@@ -206,88 +197,71 @@ class HepPlotterHist1D(HepPlotter):
                partner      The other histogram with which to plot the ratio
                True/False   True=numerator; False=denominator
         """
-        drawn_ratios = []
-        for d in self.data2plot:
-            data2plot = self.data2plot[d]
-            partners  = data2plot.ratios            # partner(s) for ratio
+        self.ratio.initialize()       # set parameters for ratio plots
+        value = self.ratio.value      # type of plot (ratio/significance)
 
-            if not partners: continue      # no ratio plot, skip
+        for d in self.ratio.ratios2plot:
+            numerator   = self.data2plot[d['numerator']]
+            denominator = self.data2plot[d['denominator']]
 
-            for p,partner in enumerate(partners):
-                names = (data2plot.name,partner[0]) if partner[1] else (partner[0],data2plot.name)
-                if names in drawn_ratios: continue
-                drawn_ratios.append(names)
+            num_data = numerator.data.content
+            den_data = denominator.data.content
 
-                p_data = self.data2plot[partner[0]]  # load data of ratio 'partner'
+            # create new object for plotting ratio (clone numerator properties)
+            ratio_data = deepcopy(numerator)
 
-                if partner[1]:
-                    numerator   = data2plot
-                    denominator = p_data
-                else:
-                    numerator   = p_data
-                    denominator = data2plot
+            # using the kwargs option in Ratio.Add(), the user can modify properties
+            ratio_kwargs = d['kwargs']
+            self.setParameters(ratio_data,**ratio_kwargs)
 
-                num_data = numerator.data.content
-                den_data = denominator.data.content
 
-                # put information into new instance -- copy original information
-                ratio_data = HepPlotterData()
-                for key in dir(numerator):
-                    if key=='data': continue
-                    original = getattr(numerator,key)
-                    try:
-                        setattr( ratio_data, key, original )
-                    except AttributeError:
-                        continue
-                ratio_data.kwargs['density'] = False
+            # calculate the ratio
+            if value=="ratio":
+                ratio_data.data.content = (num_data / den_data).copy()
+                ratio_data.data.error   = (numerator.data.error / den_data).copy()
+            else:
+                # significance = s/sqrt(b) for now
+                ratio_data.data.content = (num_data / np.sqrt(den_data)).copy()
+                ratio_data.data.error   = None
 
-                # calculate the ratio depending on the user setting ('ratio' or 'significance')
-                if self.ratio_plot=="ratio":
-                    ratio_data.data.content = (num_data / den_data).copy()
-                    ratio_data.data.error   = (numerator.data.error / den_data).copy()
-                elif self.ratio_plot=="significance":
-                    # s/sqrt(b) for now
-                    ratio_data.data.content = (num_data / np.sqrt(den_data)).copy()
-                    ratio_data.data.error   = None
-                else:
-                    print " WARNING :: Un-specified method for ratio plot '{0}' ",format(self.ratio_plot)
-                    print "            Setting ratio equal to 1.0 with no uncertainties    "
-                    ratio_data.data.content = np.ones( len(num_data) )
-                    ratio_data.data.error   = [0 for _ in residual]
 
-                # make the ratio plot
-                if numerator.isErrorbar:
-                    inf_ind = np.where( np.isinf(ratio_data.data.content) )
-                    ratio_data.data.content[inf_ind] = np.nan
-                    ratio_data.kwargs["xerr"] = numerator.data.width
+            # make the ratio plot
+            inf_ind = np.where( np.isinf(ratio_data.data.content) )  # remove infinities 
 
-                    self.plotErrorbars(ratio_data,axis=self.ax2,normed=False,logplot=False)
-                else:
-                    # remove NaN/inf values from hist
-                    content = ratio_data.data.content
-                    max_con = max( [i for i in content if not (np.isnan(i) or np.isinf(i))] )
-                    nan_ind = np.where( np.isnan(content) ) 
-                    inf_ind = np.where( np.isinf(content) )
-                    ratio_data.data.content[nan_ind] = 0.
-                    ratio_data.data.content[inf_ind] = 0.
-                    ratio_data.data.content[inf_ind] = 10.*max_con  # random large value
+            if ratio_data.draw_type=='errorbar':
+                ratio_data.data.content[inf_ind] = np.nan
+                ratio_data.kwargs["xerr"] = ratio_kwargs.get('xerr',numerator.data.width)
 
-                    self.plotHistograms(ratio_data,axis=self.ax2,uncertainty=True,
-                                        normed=False,logplot=False)
+                self.plotErrorbars(ratio_data,axis=self.ax2)
+            else:
+                # remove NaN/inf values from hist
+                content = ratio_data.data.content
+                max_con = max( [i for i in content if not (np.isnan(i) or np.isinf(i))] )
+                nan_ind = np.where( np.isnan(content) )
+                ratio_data.data.content[nan_ind] = 0.
+                ratio_data.data.content[inf_ind] = 10.*max_con
 
-            ## Ratio Uncertainties
-            if self.drawStatUncertainty:
-                self.plotUncertainty(data2plot,self.ax2,normalize=True)
+                if len(inf_ind)>0 and value=='significance':
+                    print " WARNING : The significance calculation yielded infinite values"
+                    print "         : These will skew the histogram visualization - "
+                    print "         : consider changing to an 'errorbar' plot. "
+
+                # set some options unless user specifies them in 'kwargs'
+                ratio_data.kwargs['density'] = ratio_kwargs.get('density',False)
+
+                self.plotHistograms(ratio_data,axis=self.ax2,
+                                    uncertainty=self.ratio.uncertainty,
+                                    norm_uncertainty=True)
 
         ## Add extra line for ratio plot
-        if self.ratio_plot=='ratio':
+        if value=='ratio':
             self.ax2.axhline(y=1,ls='--',c='k',zorder=1,lw=1)  # line to 'guide the eye'
 
         ## Modify tick marks for y-axis
-        axis_ticks = self.ratio_yticks if self.ratio_plot=='ratio' else self.ax2.get_yticks()[::2]
+        axis_ticks = self.ratio.yticks if value=='ratio' else self.ax2.get_yticks()[::2]
         self.ax2.set_yticks(axis_ticks)
-        self.ax2.set_ylim(  self.ratio_ylims[self.ratio_plot])
-        self.ax2.set_ylabel(self.y_label_ratio,ha='center',va='bottom')
+        self.ax2.set_ylim(  self.ratio.ylim)
+        self.ax2.set_ylabel(self.ratio.ylabel,ha='center',va='bottom')
 
         # Modify tick labels
         formatter = FormatStrFormatter('%g')
@@ -355,6 +329,58 @@ class HepPlotterHist1D(HepPlotter):
 
         leg = axis.legend(handles,labels,ncol=self.legend["ncol"],**kwargs)
         leg.draw_frame(self.legend['draw_frame'])
+
+        return
+
+
+
+
+class HepPlotterRatio(object):
+    """Simple class to contain information for ratio plot"""
+    def __init__(self):
+        self.ratios2plot  = []   # list of dictionaries containing information for ratio
+        self.listOfRatios = []   # list of tuples (numerator,denominator) to monitor which ratios to plot
+        self.value  = 'ratio'    # kind of ratio plot (ratio or significance at the moment)
+        self.ylim   = None
+        self.yticks = None
+        self.ylabel = ''
+        self.uncertainty = False # draw uncertainty band
+
+
+    def initialize(self):
+        """Set some default options if not set by the user"""
+        if self.value not in ['ratio','significance']:
+            print " WARNING : You have chosen an unsupported method for ratio plot:"
+            print "         : > {0}".format(self.value)
+            print "         : Setting to 'ratio'."
+            self.value = 'ratio'
+
+        if not self.ylabel:
+            self.ylabel = 'Ratio' if self.value=='ratio' else r'S/$\sqrt{\text{B}}$'
+
+        if self.value=='ratio':
+            if self.ylim is None:   self.ylim   = (0.5,1.5)
+            if self.yticks is None: self.yticks = np.array([0.6,1.0,1.4])
+
+        return
+
+    def Add(self,numerator='',denominator='',**kwargs):
+        """
+        Add a ratio plot to this figure.
+        @param numerator        name to identify data for numerator
+        @param denominator      name to identify data for denominator
+        @param kwargs           arguments for matplotlib options
+                   -- hist:     https://matplotlib.org/api/_as_gen/matplotlib.pyplot.hist.html
+                   -- errorbar: https://matplotlib.org/api/_as_gen/matplotlib.pyplot.errorbar.html
+        """
+        ratio  = (numerator,denominator)
+        params = {"numerator":numerator,"denominator":denominator,"kwargs":kwargs}
+
+        if ratio in self.listOfRatios:
+            return
+
+        self.listOfRatios.append(ratio)
+        self.ratios2plot.append(params)
 
         return
 

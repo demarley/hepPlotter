@@ -162,6 +162,7 @@ class HepPlotterHist1D(HepPlotter):
         # unless a kwarg is passed to override this
         if self.normed and not ('normed' in kwargs):
             histogram.kwargs["density"] = True
+            print histogram.kwargs
 
         this_label = histogram.label
         if histogram.draw_type=='step':
@@ -172,8 +173,13 @@ class HepPlotterHist1D(HepPlotter):
                           ls=histogram.linestyle,label=histogram.label)
 
         # Make the histogram
+        print histogram.linestyle,histogram.linewidth
+        print bin_center
+        print binning
+        print data.tolist()
+        print histogram.kwargs
         data,b,p = axis.hist(bin_center,bins=binning,weights=data,
-                             label=this_label,stacked=self.stacked,
+                             label=this_label,
                              lw=histogram.linewidth,histtype=histogram.draw_type,
                              ls=histogram.linestyle,
                              color=histogram.color,
@@ -239,7 +245,7 @@ class HepPlotterHist1D(HepPlotter):
                         setattr( ratio_data, key, original )
                     except AttributeError:
                         continue
-                ratio_data.normed = False
+                ratio_data.kwargs['density'] = False
 
                 # calculate the ratio depending on the user setting ('ratio' or 'significance')
                 if self.ratio_plot=="ratio":
@@ -265,8 +271,12 @@ class HepPlotterHist1D(HepPlotter):
                 else:
                     # remove NaN/inf values from hist
                     content = ratio_data.data.content
-                    nan_inf_ind = np.where( np.isnan(content) or np.isinf(content) )
-                    ratio_data.data.content[nan_inf_ind] = 0.
+                    max_con = max( [i for i in content if not (np.isnan(i) or np.isinf(i))] )
+                    nan_ind = np.where( np.isnan(content) ) 
+                    inf_ind = np.where( np.isinf(content) )
+                    ratio_data.data.content[nan_ind] = 0.
+                    ratio_data.data.content[inf_ind] = 0.
+                    ratio_data.data.content[inf_ind] = 10.*max_con  # random large value
 
                     self.plotHistograms(ratio_data,axis=self.ax2,uncertainty=True,
                                         normed=False,logplot=False)

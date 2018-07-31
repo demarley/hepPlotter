@@ -204,8 +204,8 @@ class Histogram1D(Plotter):
             numerator   = self.data2plot[d['numerator']]
             denominator = self.data2plot[d['denominator']]
 
-            num_data = numerator.data.content
-            den_data = denominator.data.content
+            num_data = numerator.plotData
+            den_data = denominator.plotData
 
             # create new object for plotting ratio (clone numerator properties)
             ratio_data = deepcopy(numerator)
@@ -223,7 +223,6 @@ class Histogram1D(Plotter):
                 # significance = s/sqrt(b) for now
                 ratio_data.data.content = (num_data / np.sqrt(den_data)).copy()
                 ratio_data.data.error   = None
-
 
             # make the ratio plot
             inf_ind = np.where( np.isinf(ratio_data.data.content) )  # remove infinities 

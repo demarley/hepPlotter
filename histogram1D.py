@@ -314,20 +314,26 @@ class Histogram1D(Plotter):
 
 
 
-    def drawLegend(self,axis=None):
+    def drawLegend(self,axis=None,legend_args=None):
         """Draw the legend"""
         if axis is None: axis = self.ax1
+        if legend_args is None: legend_args = self.legend
 
         # get items in the legend (can re-order them here)
         handles, labels = axis.get_legend_handles_labels()
+        if 'extra_handles' in self.legend.keys():
+            handles += self.legend['extra_handles']
+            labels  += self.legend['extra_labels']
+            self.legend.pop('extra_handles')
+            self.legend.pop('extra_labels')
 
         # Check for extra kwargs the user may have added to override defaults
-        kwargs = dict( (k,self.legend[k]) for k in self.legend if (k!="ncol" and k!='draw_frame'))
+        kwargs = dict( (k,legend_args[k]) for k in legend_args if (k!="ncol" and k!='draw_frame'))
 
-        if self.legend['ncol']<0: self.legend['ncol'] = 1 if len(handles)<4 else 2
+        if legend_args['ncol']<0: legend_args['ncol'] = 1 if len(handles)<4 else 2
 
-        leg = axis.legend(handles,labels,ncol=self.legend["ncol"],**kwargs)
-        leg.draw_frame(self.legend['draw_frame'])
+        leg = axis.legend(handles,labels,ncol=legend_args["ncol"],**kwargs)
+        leg.draw_frame(legend_args['draw_frame'])
 
         return
 

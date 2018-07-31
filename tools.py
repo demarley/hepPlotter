@@ -240,7 +240,7 @@ def TEfficiency2list(histo):
     results.content = np.array(bin_contents)
     results.error   = [bin_errors_dn,bin_errors_up]
     results.bins    = bin_edges
-    results.center  = h_eff_mp
+    results.center  = bin_centers
     results.width   = bin_widths
 
     return results

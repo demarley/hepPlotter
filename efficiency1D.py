@@ -29,8 +29,8 @@ import numpy as np
 
 class Efficiency1D(Histogram1D):
     """One dimensional histogram with HEP plotter formatting and structure"""
-    def __init__(self):       
-        PlotterHist1D.__init__(self)
+    def __init__(self):
+        Histogram1D.__init__(self)
         return
 
 
@@ -39,29 +39,25 @@ class Efficiency1D(Histogram1D):
         Make the plot!
         return the Figure object to the user (they can edit it if they please)
         """
-        self.ratio_ylims  = {}
-        self.ratio_yticks = {}
-
-        if self.ratio_plot:
+        draw_ratio = False
+        if len(self.ratio.ratios2plot)>0:
             fig = plt.figure()
-            gs  = matplotlib.gridspec.GridSpec(2,1,height_ratios=[3,1],hspace=0.0)
+            gs  = gridspec.GridSpec(2,1,height_ratios=[3,1],hspace=0.0)
             self.ax1 = fig.add_subplot(gs[0])
             self.ax2 = fig.add_subplot(gs[1],sharex=self.ax1)
             plt.setp(self.ax1.get_xticklabels(),visible=False)
 
-            self.ratio_ylims = {'ymin':{'ratio':0.5,'significance':0.0},
-                                'ymax':{'ratio':1.5,'significance':None}}
-            self.ratio_yticks = {'ratio':np.asarray([0.6,1.0,1.4]),
-                                 'significance':self.ax2.get_yticks()[::2]}
+            draw_ratio = True
         else:
-            fig,self.ax1 = plt.subplots(figsize=self.figsize)
+            fig,self.ax1 = plt.subplots()
 
 
         # draw horizontal lines to guide the eye
-        self.ax1.axhline(y=0.25,color='lightgray',ls='--',lw=1,zorder=0)
-        self.ax1.axhline(y=0.50,color='lightgray',ls='--',lw=1,zorder=0)
-        self.ax1.axhline(y=0.75,color='lightgray',ls='--',lw=1,zorder=0)
-        self.ax1.axhline(y=1.00,color='lightgray',ls='--',lw=1,zorder=0)
+        self.ax1.axhline(y=0.25,color='lightgray',ls='--',lw=1)
+        self.ax1.axhline(y=0.50,color='lightgray',ls='--',lw=1)
+        self.ax1.axhline(y=0.75,color='lightgray',ls='--',lw=1)
+        self.ax1.axhline(y=1.00,color='lightgray',ls='--',lw=1)
+
 
         # organize data for plotting
         bars2plot  = []   # efficiency data to draw as 'errorbars' (recommended)
@@ -83,8 +79,22 @@ class Efficiency1D(Histogram1D):
         for n,bar2plot in enumerate(bars2plot):
             bar2plot.kwargs["zorder"] = 150+n
 
+            # if global value for 'normed' is True, override object setting
+            # need to remake content using histogram (no 'density' kwarg in plt.errorbar())
+            if self.normed or bar2plot.normed:
+                bar2plot.normed = True
+
+                h_data  = bar2plot.data
+                og_data = h_data.content.copy()
+                data,be = np.histogram(h_data.center,bins=h_data.bins,
+                                       weights=og_data,density=True)
+                error = h_data.error * (data/og_data)  # scale error bars
+                bar2plot.data.content = data
+                bar2plot.data.error   = error
+
             tmp_barplot  = self.plotErrorbars(bar2plot)
-            bars2plot[n] = tmp_barplot
+            bars2plot[n] = tmp_barplot            # update data
+
 
         ##  Histograms (should be in background: start with zorder 100)
         bottom = None                             # 'bottom' for stacking histograms
@@ -92,11 +102,17 @@ class Efficiency1D(Histogram1D):
             hist2plot.kwargs["zorder"] = 100+n
             hist2plot.kwargs["bottom"] = bottom if self.stacked else None
 
+            # if global value for 'normed' is True, override object setting
+            if self.normed or hist2plot.normed:
+                hist2plot.normed = True
+                hist2plot.kwargs["density"] = True
+
             tmp_hist2plot = self.plotHistograms(hist2plot,uncertainty=self.drawUncertaintyMain)
-            hists2plot[n] = tmp_hist2plot
+            hists2plot[n] = tmp_hist2plot         # update data
 
             if n==0: bottom  = hist2plot.plotData # modify 'bottom' for stacked plots
             else:    bottom += hist2plot.plotData
+
 
         ##  Physics distributions
         if phys2plot:
@@ -108,30 +124,16 @@ class Efficiency1D(Histogram1D):
         for i in bars2plot:  self.data2plot[i.name] = i
         for i in phys2plot:  self.data2plot[i.name] = i
 
+
         ## ratio plot
-        if self.ratio_plot:
-            self.drawRatio()   # possibly to show scale factor (data/mc)
+        xaxis = None
+        if draw_ratio:
+            self.plotRatio()              # make the ratio plot
+            xaxis = self.ax2              # draw ratio plot xaxis instead of self.ax1
 
-        ## y-axis
-        if self.ylim is not None:
-            self.ax1.set_ylim(self.ylim)
-        else:
-            if self.ymaxScale is None:
-                self.ymaxScale = self.yMaxScaleValues["efficiency"]
-            self.ax1.set_ylim(0., self.ymaxScale * self.ax1.get_ylim()[1])
-
-        self.ax1.set_yticks(self.ax1.get_yticks()[1:])
-        self.setYAxis(self.ax1)
-
-        ## x-axis
-        if self.xlim is not None:
-            plt.xlim(self.xlim)
-        x_axis = self.ax2 if self.ratio_plot else self.ax1
-        self.setXAxis(x_axis)
-
-        ## axis ticks
-        self.setAxisTickMarks()
-        plt.tick_params(which='minor', length=4) # ticks
+        ## Axis ticks/labels
+        self.set_xaxis(xaxis)
+        self.set_yaxis()
 
         ## CMS label
         if self.CMSlabel is not None:
@@ -161,13 +163,13 @@ class Efficiency1D(Histogram1D):
                 data.kwargs["bottom"] = bottom if self.stacked else None
                 tmp_dataplot = self.plotHistograms(data,axis=axis_twin)
 
-            data2plot[n] = tmp_barplot
+            data2plot[n] = tmp_dataplot
             if n==0: bottom  = data.plotData      # modify 'bottom' for stacked plots
             else:    bottom += data.plotData      # this also records the height of plotted data
 
         axis_twin.yaxis.set_tick_params(which='major', length=8)
         axis_twin.set_ylabel("",fontsize=0,ha='right',va='top')
-        axis_twin.set_ylim(ymin=0.0,ymax=self.ymaxScale*max(bottom))
+        axis_twin.set_ylim(ymin=0.0,ymax=self.axis_scale['y']*max(bottom))
 
         # modify axis_twin ticks & hide tick labels
         twin_ticks = axis_twin.get_yticks()
@@ -175,6 +177,11 @@ class Efficiency1D(Histogram1D):
         axis_twin.set_yticklabels([])
         axis.set_zorder(axis_twin.get_zorder()+1) # put ax in front of axis_twin
         axis.patch.set_visible(False)             # hide the 'canvas'
+
+        # modify legend in axis to have these items
+        extra_handles,extra_labels = axis_twin.get_legend_handles_labels()
+        self.legend['extra_handles'] = extra_handles
+        self.legend['extra_labels']  = extra_labels
         
         return data2plot
 

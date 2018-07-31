@@ -31,26 +31,6 @@ def getName(filename):
     return name
 
 
-def getSampleType(name):
-    """Given a sample name return the sample type"""
-    backgrounds = open("share/sampleNamesShort.txt").readlines()
-    backgrounds = [i.rstrip("\n") for i in backgrounds]
-    signal = ['TTS','BBS','TTD','BBD','XX','YY','zprime']
-    data = ['data']
-
-    sampletype = ''
-    if name=='data':
-        sampletype = 'data'
-    elif any(name.startswith(i) for i in signal):
-        sampletype = 'signal'
-    elif name in backgrounds:
-        sampletype = 'background'
-    else:
-        sampletype = ''
-
-    return sampletype
-
-
 def getDataStructure(h_data):
     """
     Find the data structure determining the appropriate color scheme.
@@ -85,8 +65,6 @@ def hist1d(nbins,bin_low,bin_high):
     binsize = float(bin_high-bin_low)/nbins
     arr     = [i*binsize+bin_low for i in xrange(nbins+1)]
     return arr
-
-
 
 
 class Data(object):

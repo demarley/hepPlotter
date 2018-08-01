@@ -100,8 +100,8 @@ class Histogram1D(Plotter):
             tmp_hist2plot = self.plotHistograms(hist2plot,uncertainty=self.drawUncertaintyMain)
             hists2plot[n] = tmp_hist2plot         # update data
 
-            if n==0: bottom  = hist2plot.plotData # modify 'bottom' for stacked plots
-            else:    bottom += hist2plot.plotData
+            if n==0: bottom  = tmp_hist2plot.plotData.copy() # modify 'bottom' for stacked plots
+            else:    bottom += tmp_hist2plot.plotData.copy()
 
         ## now that the plots have been made, update the data2plot dictionary
         for i in hists2plot: self.data2plot[i.name] = i

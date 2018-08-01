@@ -1,4 +1,5 @@
-# HEP Plotter
+<img src="data/logo.png" width="500">
+
 
 Interface for plotting HEP data with matplotlib
 

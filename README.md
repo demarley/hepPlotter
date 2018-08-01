@@ -9,6 +9,11 @@ Built with:
 - [ROOT](https://root.cern.ch/) 6.10/02
 - [uproot](https://github.com/scikit-hep/uproot) 2.9.0 (NB: not currently implemented)
 
+
+# Examples
+
+See the [examples](examples/) directory for jupyter notebooks that detail how to use the framework.
+
 # Questions or Comments
 
 Contact the author, submit an issue, or submit a PR.

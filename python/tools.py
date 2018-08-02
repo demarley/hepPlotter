@@ -111,7 +111,7 @@ def data2list2D(data,weights=None,normed=False,binning=1):
     results = Data()
     results.content = data
     results.error   = np.sqrt(data)
-    results.bins    = {'x':bins_x,'y':bins_y}
+    results.bins    = {'x':np.array(bins_x),'y':np.array(bins_y)}
     results.center  = {'x':binnsx,'y':binnsy}
     results.width   = {'x':0.5*(bins_x[:-1]-bins_x[1:]),
                        'y':0.5*(bins_y[:-1]-bins_y[1:])}
@@ -151,7 +151,7 @@ def hist2list(histo,name='',normed=False,reBin=1):
     results = Data()
     results.content = np.array(bin_contents)
     results.error   = np.array(bin_errors)
-    results.bins    = bin_edges
+    results.bins    = np.array(bin_edges)
     results.center  = bin_centers
     results.width   = bin_widths
 
@@ -209,7 +209,7 @@ def hist2list2D(histo,name='',reBin=None,normed=False):
     results = Data()
     results.content = np.array(bin_contents)
     results.error   = np.array(bin_errors)
-    results.bins    = bin_edges
+    results.bins    = {'x':np.array(bin_edges['x']), 'y':np.array(bin_edges['y']) }
     results.center  = bin_centers
     results.width   = bin_widths
 
@@ -239,7 +239,7 @@ def TEfficiency2list(histo):
     results = Data()
     results.content = np.array(bin_contents)
     results.error   = [bin_errors_dn,bin_errors_up]
-    results.bins    = bin_edges
+    results.bins    = np.array(bin_edges)
     results.center  = bin_centers
     results.width   = bin_widths
 
@@ -277,7 +277,7 @@ def TEfficiency2list2D(histo):
     results = Data()
     results.content = np.array(bin_contents)
     results.error   = [np.array(bin_error_dns),np.array(bin_error_ups)]
-    results.bins    = bin_edges
+    results.bins    = {'x':np.array(bin_edges['x']),'y':np.array(bin_edges['y'])}
     results.center  = bin_centers
     results.width   = bin_widths
 

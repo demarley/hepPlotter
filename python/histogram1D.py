@@ -280,6 +280,9 @@ class Histogram1D(Plotter):
         """
         error   = hist.data.error
         nominal = hist.plotData
+        binning = hist.data.bins
+        kwargs  = dict( (k,hist.kwargs[k]) for k in hist.kwargs if k!='density')
+
 
         # Draw vertical line for errors
         keys = ['up','dn']
@@ -296,19 +299,19 @@ class Histogram1D(Plotter):
 
             error      = [resid_unc['dn'],resid_unc['up']]
             data       = [1. for _ in nominal] if normalize else nominal
-            bin_center = 0.5*(self.binning[:-1]+self.binning[1:])
+            bin_center = 0.5*(binning[:-1]+binning[1:])
 
             axis.errorbar(bin_center,data,yerr=error,
                           fmt=hist.fmt,color=hist.color,
-                          zorder=100,**hist.kwargs)
+                          zorder=100,**kwargs)
         else:
             # Draw uncertainty as rectangles for each bin
             resid_unc = dict( (k,list(resid_unc[k].repeat(2))) for k in keys )  # convert to lists
 
-            fill_between_bins = [self.binning[0]]+list(self.binning[1:-1].repeat(2))+[self.binning[-1]]
+            fill_between_bins = [binning[0]]+list(binning[1:-1].repeat(2))+[binning[-1]]
 
             axis.fill_between(fill_between_bins,resid_unc['dn'],resid_unc['up'],
-                              zorder=10,color=hist.color,**hist.kwargs)
+                              zorder=10,color=hist.color,**kwargs)
 
         return
 

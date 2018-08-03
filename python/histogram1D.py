@@ -82,7 +82,7 @@ class Histogram1D(Plotter):
                 bar2plot.data.content = data
                 bar2plot.data.error   = error
 
-            tmp_barplot  = self.plotErrorbars(bar2plot)
+            tmp_barplot  = self.plotErrorbar(bar2plot)
             bars2plot[n] = tmp_barplot            # update data
 
 
@@ -97,7 +97,7 @@ class Histogram1D(Plotter):
                 hist2plot.normed = True
                 hist2plot.kwargs["density"] = True
 
-            tmp_hist2plot = self.plotHistograms(hist2plot,**self.uncertainty)
+            tmp_hist2plot = self.plotHistogram(hist2plot,uncertainty=hist2plot.uncertainty)
             hists2plot[n] = tmp_hist2plot         # update data
 
             if n==0: bottom  = tmp_hist2plot.plotData.copy() # modify 'bottom' for stacked plots
@@ -127,9 +127,10 @@ class Histogram1D(Plotter):
         return fig
 
 
-    def plotErrorbars(self,bar2plot,axis=None,**kwargs):
+    def plotErrorbar(self,bar2plot,axis=None,**kwargs):
         """Draw errorbar plot(s)"""
         if axis is None: axis = self.ax1
+        bar2plot.kwargs.update(kwargs)
 
         h_data = bar2plot.data
         data   = h_data.content
@@ -143,6 +144,7 @@ class Histogram1D(Plotter):
                               mec=bar2plot.markeredgecolor,
                               mfc=bar2plot.markerfacecolor,
                               markersize=bar2plot.markersize,
+                              elinewidth=bar2plot.elinewidth,
                               **bar2plot.kwargs)
         bar2plot.plotData = data
 
@@ -150,9 +152,10 @@ class Histogram1D(Plotter):
 
 
 
-    def plotHistograms(self,histogram,axis=None,uncertainty={}):
+    def plotHistogram(self,histogram,axis=None,uncertainty={},**kwargs):
         """Plot histograms"""
         if axis is None: axis = self.ax1
+        histogram.kwargs.update(kwargs)
 
         h_data  = histogram.data
         data    = h_data.content
@@ -179,8 +182,12 @@ class Histogram1D(Plotter):
         histogram.plotData = data
 
         # only use this for histograms because errorbar has 'yerr' option
+        # uncertainty might be a bool and just use the options from hist to plot it
         if uncertainty:
-            self.plotUncertainty(histogram,axis,**uncertainty)
+            try:
+                self.plotUncertainty(histogram,axis,**uncertainty)
+            except TypeError:
+                self.plotUncertainty(histogram,axis)
 
         return histogram
 
@@ -212,6 +219,7 @@ class Histogram1D(Plotter):
             # using the kwargs option in Ratio.Add(), the user can modify properties
             ratio_kwargs = d['kwargs']
             self.setParameters(ratio_data,**ratio_kwargs)
+            uncertainty  = d.get("uncertainty",{})
 
 
             # calculate the ratio
@@ -231,7 +239,7 @@ class Histogram1D(Plotter):
                 ratio_data.kwargs["xerr"] = ratio_kwargs.get('xerr',numerator.data.width)
                 ratio_data.kwargs["zorder"] = ratio_data.kwargs.get("zorder",150)
 
-                self.plotErrorbars(ratio_data,axis=self.ax2)
+                self.plotErrorbar(ratio_data,axis=self.ax2)
             else:
                 # remove NaN/inf values from hist
                 content = ratio_data.data.content
@@ -249,8 +257,7 @@ class Histogram1D(Plotter):
                 ratio_data.kwargs["zorder"]  = ratio_data.kwargs.get("zorder",100)
                 ratio_data.kwargs['density'] = ratio_kwargs.get('density',False)
 
-                self.plotHistograms(ratio_data,axis=self.ax2,
-                                    uncertainty=self.ratio.uncertainty)
+                self.plotHistogram(ratio_data,axis=self.ax2,uncertainty=uncertainty)
 
         ## Add extra line for ratio plot
         if value=='ratio':
@@ -293,7 +300,7 @@ class Histogram1D(Plotter):
             resid_unc['dn'] /= nominal
 
         # remove kwargs unsupported by fill_between
-        remove = ['density','normalize']
+        remove = ['density','normalize','bottom']
         for rem in remove:
             try:    hist.kwargs.pop(rem)
             except: continue
@@ -345,7 +352,6 @@ class PlotterRatio(object):
         self.ylim   = None
         self.yticks = None
         self.ylabel = ''
-        self.uncertainty = {}    # draw uncertainty band & pass kwargs 
 
     def initialize(self):
         """Set some default options if not set by the user"""
@@ -370,11 +376,16 @@ class PlotterRatio(object):
         @param numerator        name to identify data for numerator
         @param denominator      name to identify data for denominator
         @param kwargs           arguments for matplotlib options
+                                *including drawing an uncertainty band*
                    -- hist:     https://matplotlib.org/api/_as_gen/matplotlib.pyplot.hist.html
                    -- errorbar: https://matplotlib.org/api/_as_gen/matplotlib.pyplot.errorbar.html
         """
         ratio  = (numerator,denominator)
-        params = {"numerator":numerator,"denominator":denominator,"kwargs":kwargs}
+        params = {"numerator":numerator,"denominator":denominator}
+        if kwargs.get("uncertainty"):
+            params['uncertainty'] = kwargs['uncertainty']
+            kwargs.pop('uncertainty')
+        params['kwargs'] = kwargs
 
         if ratio in self.listOfRatios:
             return

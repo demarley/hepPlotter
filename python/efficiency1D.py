@@ -92,7 +92,7 @@ class Efficiency1D(Histogram1D):
                 bar2plot.data.content = data
                 bar2plot.data.error   = error
 
-            tmp_barplot  = self.plotErrorbars(bar2plot)
+            tmp_barplot  = self.plotErrorbar(bar2plot)
             bars2plot[n] = tmp_barplot            # update data
 
 
@@ -107,7 +107,7 @@ class Efficiency1D(Histogram1D):
                 hist2plot.normed = True
                 hist2plot.kwargs["density"] = True
 
-            tmp_hist2plot = self.plotHistograms(hist2plot,uncertainty=self.drawUncertaintyMain)
+            tmp_hist2plot = self.plotHistogram(hist2plot,uncertainty=self.drawUncertaintyMain)
             hists2plot[n] = tmp_hist2plot         # update data
 
             if n==0: bottom  = hist2plot.plotData.copy() # modify 'bottom' for stacked plots
@@ -157,11 +157,11 @@ class Efficiency1D(Histogram1D):
             bottom = None                        # 'bottom' for stacking histograms
             if data.isErrorbar:
                 data.kwargs["zorder"] = 70+n     # draw behind efficiency curves
-                tmp_dataplot = self.plotErrorbars(data,axis=axis_twin)
+                tmp_dataplot = self.plotErrorbar(data,axis=axis_twin)
             elif data.isHistogram:
                 data.kwargs["zorder"] = 50+n
                 data.kwargs["bottom"] = bottom if self.stacked else None
-                tmp_dataplot = self.plotHistograms(data,axis=axis_twin)
+                tmp_dataplot = self.plotHistogram(data,axis=axis_twin)
 
             data2plot[n] = tmp_dataplot
             if n==0: bottom  = data.plotData      # modify 'bottom' for stacked plots

@@ -40,9 +40,9 @@ import labels
 
 class PlotterData(object):
     """Class for containing data objects to plot"""
-    def __init__(self):
+    def __init__(self,name=''):
         """The following are nominal attributes of the class with common parameters"""
-        self.name  = ''
+        self.name  = name
         self.color = 'k' 
         self.fmt   = 'o'
         self.linecolor = 'k'
@@ -50,6 +50,7 @@ class PlotterData(object):
         self.linestyle = '-'
         self.linewidth = 2
         self.ecolor = 'k'
+        self.elinewidth = 1.5
         self.markeredgecolor = 'k'
         self.markerfacecolor = 'k'
         self.markersize = 6
@@ -59,6 +60,7 @@ class PlotterData(object):
         self.weight = None
         self.draw_type   = 'step' # 'step','stepfilled','errorbar' (others?)
         self.plotData    = None   # get the data from the plot to use later
+        self.uncertainty = {}     # kwargs for drawing uncertainty of this object
         self.isHistogram = False  # plt.hist()
         self.isErrobar   = False  # plt.errorbar()
         self.isLinePlot  = False  # basic plt.plot() -- not supported yet
@@ -100,7 +102,6 @@ class Plotter(object):
         self.CMSlabelStatus = 'Internal'     # ('Simulation')+'Internal' || 'Preliminary'
         self.format = 'pdf'                  # file format for saving image
         self.saveAs = "result"               # save figure with name
-        self.uncertainty = {}                # kwargs for drawing uncertainties
         self.logplot = {"y":False,"x":False,"data":False}  # plot axes or data (2D) on log scale
 
         self.text_coords = {'top left': {'x':[0.03]*3,        'y':[0.96,0.89,0.82]},\

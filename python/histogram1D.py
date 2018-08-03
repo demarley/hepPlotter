@@ -327,7 +327,7 @@ class Histogram1D(Plotter):
         if 'extra_handles' in self.legend.keys():
             handles += self.legend['extra_handles']
             labels  += self.legend['extra_labels']
-            self.legend.pop('extra_handles')
+            self.legend.pop('extra_handles')         # remove unsupported kwargs
             self.legend.pop('extra_labels')
 
         # Check for extra kwargs the user may have added to override defaults

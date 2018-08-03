@@ -284,8 +284,10 @@ class Plotter(object):
         cms_stamp    = labels.CMSStamp(self.CMSlabelStatus)
 
         cms_stamp.coords = [text['x'][0], text['y'][0]]
-        if self.CMSlabel == 'top right': cms_stamp.ha = 'right'
-        if self.dimensions==2:           cms_stamp.va = 'bottom'   # change alignment for 2d labels
+        if self.CMSlabel=='top right':
+            cms_stamp.ha = 'right'
+        if self.dimensions==2 or self.CMSlabel=='outer':
+            cms_stamp.va = 'bottom'   # change alignment for 2d labels
 
         energy_stamp = labels.EnergyStamp()
         energy_stamp.coords = [0.99,1.0]

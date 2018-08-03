@@ -54,11 +54,10 @@ class PlotterData(object):
         self.markerfacecolor = 'k'
         self.markersize = 6
         self.label  = ''
-        self.data   = None
+        self.data   = None        # Data() object (tools.py)
         self.normed = False
         self.weight = None
         self.draw_type   = 'step' # 'step','stepfilled','errorbar' (others?)
-        self.uncertainty = None
         self.plotData    = None   # get the data from the plot to use later
         self.isHistogram = False  # plt.hist()
         self.isErrobar   = False  # plt.errorbar()
@@ -95,13 +94,13 @@ class Plotter(object):
         self.x_label = 'x'
         self.y_label = 'y'
         self.extra_text  = labels.PlotText()
-        self.lumi     = '14.7'
+        self.lumi     = '35.9'
         self.plotLUMI = False
         self.CMSlabel = None                 # 'top left', 'top right' & 'outer' for 2D
         self.CMSlabelStatus = 'Internal'     # ('Simulation')+'Internal' || 'Preliminary'
         self.format = 'pdf'                  # file format for saving image
         self.saveAs = "result"               # save figure with name
-        self.drawUncertaintyMain = False     # draw uncertainties in the top frame
+        self.uncertainty = {}                # kwargs for drawing uncertainties
         self.logplot = {"y":False,"x":False,"data":False}  # plot axes or data (2D) on log scale
 
         self.text_coords = {'top left': {'x':[0.03]*3,        'y':[0.96,0.89,0.82]},\

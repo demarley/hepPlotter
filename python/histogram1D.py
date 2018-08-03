@@ -11,7 +11,7 @@ bmagy@umichSPAMNOT.edu
 University of Michigan, Ann Arbor, MI 48109
 -----
 
-Class to make a simple instance each time we want some basic plots!
+Class to plot basic 1D histograms
 
 This does not include an interface to load/access data.
 Here we just plot the 1D data we're given.
@@ -97,7 +97,7 @@ class Histogram1D(Plotter):
                 hist2plot.normed = True
                 hist2plot.kwargs["density"] = True
 
-            tmp_hist2plot = self.plotHistograms(hist2plot,uncertainty=self.drawUncertaintyMain)
+            tmp_hist2plot = self.plotHistograms(hist2plot,**self.uncertainty)
             hists2plot[n] = tmp_hist2plot         # update data
 
             if n==0: bottom  = tmp_hist2plot.plotData.copy() # modify 'bottom' for stacked plots
@@ -150,7 +150,7 @@ class Histogram1D(Plotter):
 
 
 
-    def plotHistograms(self,histogram,axis=None,uncertainty=False,**kwargs):
+    def plotHistograms(self,histogram,axis=None,uncertainty={}):
         """Plot histograms"""
         if axis is None: axis = self.ax1
 
@@ -180,8 +180,7 @@ class Histogram1D(Plotter):
 
         # only use this for histograms because errorbar has 'yerr' option
         if uncertainty:
-            norm = kwargs.get('norm_uncertainty',False)
-            self.plotUncertainty(histogram,axis,normalize=norm)
+            self.plotUncertainty(histogram,axis,**uncertainty)
 
         return histogram
 
@@ -230,6 +229,7 @@ class Histogram1D(Plotter):
             if ratio_data.draw_type=='errorbar':
                 ratio_data.data.content[inf_ind] = np.nan
                 ratio_data.kwargs["xerr"] = ratio_kwargs.get('xerr',numerator.data.width)
+                ratio_data.kwargs["zorder"] = ratio_data.kwargs.get("zorder",150)
 
                 self.plotErrorbars(ratio_data,axis=self.ax2)
             else:
@@ -246,15 +246,15 @@ class Histogram1D(Plotter):
                     print "         : consider changing to an 'errorbar' plot. "
 
                 # set some options unless user specifies them in 'kwargs'
+                ratio_data.kwargs["zorder"]  = ratio_data.kwargs.get("zorder",100)
                 ratio_data.kwargs['density'] = ratio_kwargs.get('density',False)
 
                 self.plotHistograms(ratio_data,axis=self.ax2,
-                                    uncertainty=self.ratio.uncertainty,
-                                    norm_uncertainty=True)
+                                    uncertainty=self.ratio.uncertainty)
 
         ## Add extra line for ratio plot
         if value=='ratio':
-            self.ax2.axhline(y=1,ls='--',c='k',zorder=1,lw=1)  # line to 'guide the eye'
+            self.ax2.axhline(y=1,ls='--',c='k',zorder=11,lw=1)  # line to 'guide the eye'
 
         ## Modify tick marks for y-axis
         axis_ticks = self.ratio.yticks if value=='ratio' else self.ax2.get_yticks()[::2]
@@ -270,48 +270,41 @@ class Histogram1D(Plotter):
 
 
 
-    def plotUncertainty(self,hist,axis,normalize=False):
+    def plotUncertainty(self,hist,axis,**kwargs):
         """
-        Plot uncertainties
+        Plot uncertainties for 'step' and 'stepfilled' data 
+        (errorbar already has this functionality).
 
-        @param axis
-        @param name        Name of sample to plot (access data from global dictionaries)
-        @param normalize   draw on ratio plot (divide by total prediction)
+        @param hist     PlotterData() object to plot
+        @param axis     Axis for drawing the plot
+        @param kwargs   Any extra plotting arguments passed here -- these will override
+                        parameters in hist and hist.kwargs
+                        https://matplotlib.org/api/_as_gen/matplotlib.pyplot.fill_between.html
         """
-        error   = hist.data.error
-        nominal = hist.plotData
-        binning = hist.data.bins
-        kwargs  = dict( (k,hist.kwargs[k]) for k in hist.kwargs if k!='density')
+        hist.kwargs.update(kwargs)
 
+        error   = hist.data.error.copy()
+        nominal = hist.plotData.copy()
+        binning = hist.data.bins.copy()
 
-        # Draw vertical line for errors
+        resid_unc = {'up':nominal+error, 'dn':nominal-error}
+        if kwargs.get('normalize'):
+            resid_unc['up'] /= nominal
+            resid_unc['dn'] /= nominal
+
+        # remove kwargs unsupported by fill_between
+        remove = ['density','normalize']
+        for rem in remove:
+            try:    hist.kwargs.pop(rem)
+            except: continue
+
+        # Draw uncertainty as rectangles for each bin
         keys = ['up','dn']
-        if normalize:
-            resid_unc = {'up':(nominal+error)/nominal,
-                         'dn':(nominal-error)/nominal}
-        else:
-            resid_unc = {'up':nominal+error,
-                         'dn':nominal-error}
+        resid_unc = dict( (k,list(resid_unc[k].repeat(2))) for k in keys )  # convert to lists
+        fill_between_bins = [binning[0]]+list(binning[1:-1].repeat(2))+[binning[-1]]
 
-        if hist.isErrorbar:
-            # Draw uncertainty as errorbars
-            resid_unc = dict( (k,list(resid_unc[k])) for k in keys )  # convert to lists
-
-            error      = [resid_unc['dn'],resid_unc['up']]
-            data       = [1. for _ in nominal] if normalize else nominal
-            bin_center = 0.5*(binning[:-1]+binning[1:])
-
-            axis.errorbar(bin_center,data,yerr=error,
-                          fmt=hist.fmt,color=hist.color,
-                          zorder=100,**kwargs)
-        else:
-            # Draw uncertainty as rectangles for each bin
-            resid_unc = dict( (k,list(resid_unc[k].repeat(2))) for k in keys )  # convert to lists
-
-            fill_between_bins = [binning[0]]+list(binning[1:-1].repeat(2))+[binning[-1]]
-
-            axis.fill_between(fill_between_bins,resid_unc['dn'],resid_unc['up'],
-                              zorder=10,color=hist.color,**kwargs)
+        axis.fill_between(fill_between_bins,resid_unc['dn'],resid_unc['up'],
+                          **hist.kwargs)
 
         return
 
@@ -352,8 +345,7 @@ class PlotterRatio(object):
         self.ylim   = None
         self.yticks = None
         self.ylabel = ''
-        self.uncertainty = False # draw uncertainty band
-
+        self.uncertainty = {}    # draw uncertainty band & pass kwargs 
 
     def initialize(self):
         """Set some default options if not set by the user"""

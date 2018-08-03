@@ -11,7 +11,7 @@ bmagy@umichSPAMNOT.edu
 University of Michigan, Ann Arbor, MI 48109
 -----
 
-Class to make a simple instance each time we want some basic plots!
+Class to plot basic 1D TEfficiency curves & histograms.
 
 This does not include an interface to load/access data.
 Here we just plot the 1D data we're given.
@@ -110,8 +110,8 @@ class Efficiency1D(Histogram1D):
             tmp_hist2plot = self.plotHistograms(hist2plot,uncertainty=self.drawUncertaintyMain)
             hists2plot[n] = tmp_hist2plot         # update data
 
-            if n==0: bottom  = hist2plot.plotData # modify 'bottom' for stacked plots
-            else:    bottom += hist2plot.plotData
+            if n==0: bottom  = hist2plot.plotData.copy() # modify 'bottom' for stacked plots
+            else:    bottom += hist2plot.plotData.copy()
 
 
         ##  Physics distributions

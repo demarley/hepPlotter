@@ -11,7 +11,7 @@ bmagy@umichSPAMNOT.edu
 University of Michigan, Ann Arbor, MI 48109
 -----
 
-Class to make a simple instance each time we want some basic plots!
+Class to plot basic 2D histograms.
 
 This does not include an interface to load/access data.
 Here we just plot the 2D data we're given.

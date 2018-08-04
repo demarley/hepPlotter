@@ -24,7 +24,8 @@ lines.markersize  : 10      # markersize, in points
 ### LaTeX customizations. See http://wiki.scipy.org/Cookbook/Matplotlib/UsingTex
 text.usetex         : true                    # LaTeX formatting for labels and such
 text.latex.unicode  : true
-text.latex.preamble : \usepackage{amsmath},\usepackage{tgheros},\usepackage{sansmath},\usepackage{siunitx},\sisetup{detect-all}
+text.latex.preamble : \usepackage{amsmath},\usepackage{sansmath}
+#text.latex.preamble : \usepackage{amsmath},\usepackage{tgheros},\usepackage{sansmath},\usepackage{siunitx},\sisetup{detect-all}
 #text.latex.preamble :  \usepackage{amsmath},\usepackage{tgheros},\usepackage{sansmath},\sansmath,\usepackage{siunitx},\sisetup{detect-all}
 
 

@@ -27,14 +27,9 @@ import numpy as np
 import matplotlib.style
 import matplotlib as mpl
 
-thisfile = os.path.dirname(os.path.abspath(__file__))
-
-CMSSW_BASE = os.environ['CMSSW_BASE']
-if CMSSW_BASE:
-    stylefile = '{0}/src/Analysis/hepPlotter/data/'.format(CMSSW_BASE)
-else:
-    stylefile = thisfile.replace('python','data')
-mpl.style.use(stylefile+'/cms.mplstyle')
+thisfile  = os.path.dirname(os.path.realpath(__file__))
+stylefile = thisfile.replace('python','data')+'/cms.mplstyle'
+mpl.style.use(stylefile)
 
 import matplotlib.pyplot as plt
 from matplotlib import gridspec

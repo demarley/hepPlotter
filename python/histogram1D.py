@@ -22,6 +22,7 @@ from copy import deepcopy
 from plotter import Plotter,PlotterData
 import tools
 
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
 from matplotlib.ticker import FormatStrFormatter
@@ -38,6 +39,8 @@ class Histogram1D(Plotter):
         self.CMSlabel = 'top left'
         self.legend   = {"ncol":-1,"draw_frame":False}
         self.ratio    = PlotterRatio()
+
+        self.normed_arg = 'normed' if not mpl.__version__.startswith('2') else 'density'
 
         return
 
@@ -73,11 +76,12 @@ class Histogram1D(Plotter):
             # need to remake content using histogram (no 'density' kwarg in plt.errorbar())
             if self.normed or bar2plot.normed:
                 bar2plot.normed = True
+                normed_kwarg = {self.normed_arg:True}
 
                 h_data  = bar2plot.data
                 og_data = h_data.content.copy()
                 data,be = np.histogram(h_data.center,bins=h_data.bins,
-                                       weights=og_data,normed=True)
+                                       weights=og_data,**normed_kwarg)
                 error = h_data.error * (data/og_data)  # scale error bars
                 bar2plot.data.content = data
                 bar2plot.data.error   = error
@@ -95,7 +99,7 @@ class Histogram1D(Plotter):
             # if global value for 'normed' is True, override object setting
             if self.normed or hist2plot.normed:
                 hist2plot.normed = True
-                hist2plot.kwargs["normed"] = True
+                hist2plot.kwargs[self.normed_arg] = True
 
             tmp_hist2plot = self.plotHistogram(hist2plot,uncertainty=hist2plot.uncertainty)
             hists2plot[n] = tmp_hist2plot         # update data

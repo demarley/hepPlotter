@@ -77,7 +77,7 @@ class Histogram1D(Plotter):
                 h_data  = bar2plot.data
                 og_data = h_data.content.copy()
                 data,be = np.histogram(h_data.center,bins=h_data.bins,
-                                       weights=og_data,density=True)
+                                       weights=og_data,normed=True)
                 error = h_data.error * (data/og_data)  # scale error bars
                 bar2plot.data.content = data
                 bar2plot.data.error   = error
@@ -95,7 +95,7 @@ class Histogram1D(Plotter):
             # if global value for 'normed' is True, override object setting
             if self.normed or hist2plot.normed:
                 hist2plot.normed = True
-                hist2plot.kwargs["density"] = True
+                hist2plot.kwargs["normed"] = True
 
             tmp_hist2plot = self.plotHistogram(hist2plot,uncertainty=hist2plot.uncertainty)
             hists2plot[n] = tmp_hist2plot         # update data
@@ -255,7 +255,7 @@ class Histogram1D(Plotter):
 
                 # set some options unless user specifies them in 'kwargs'
                 ratio_data.kwargs["zorder"]  = ratio_data.kwargs.get("zorder",100)
-                ratio_data.kwargs['density'] = ratio_kwargs.get('density',False)
+                ratio_data.kwargs['normed'] = ratio_kwargs.get('normed',False)
 
                 self.plotHistogram(ratio_data,axis=self.ax2,uncertainty=uncertainty)
 
@@ -300,7 +300,7 @@ class Histogram1D(Plotter):
             resid_unc['dn'] /= nominal
 
         # remove kwargs unsupported by fill_between
-        remove = ['density','normalize','bottom']
+        remove = ['normed','normalize','bottom']
         for rem in remove:
             try:    hist.kwargs.pop(rem)
             except: continue

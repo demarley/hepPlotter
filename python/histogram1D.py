@@ -259,7 +259,7 @@ class Histogram1D(Plotter):
 
                 # set some options unless user specifies them in 'kwargs'
                 ratio_data.kwargs["zorder"]  = ratio_data.kwargs.get("zorder",100)
-                ratio_data.kwargs['normed'] = ratio_kwargs.get('normed',False)
+                ratio_data.kwargs[self.normed_arg] = ratio_kwargs.get(self.normed_arg,False)
 
                 self.plotHistogram(ratio_data,axis=self.ax2,uncertainty=uncertainty)
 
@@ -304,7 +304,7 @@ class Histogram1D(Plotter):
             resid_unc['dn'] /= nominal
 
         # remove kwargs unsupported by fill_between
-        remove = ['normed','normalize','bottom']
+        remove = ['density','normed','normalize','bottom']
         for rem in remove:
             try:    hist.kwargs.pop(rem)
             except: continue

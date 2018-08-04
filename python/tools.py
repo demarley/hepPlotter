@@ -11,7 +11,7 @@ Simple functions to help with basic plots.
 """
 import ROOT
 import numpy as np
-
+from array import array
 
 def extract(str_value, start_='{', stop_='}'):
     """Extract a string between two symbols, e.g., parentheses."""
@@ -63,7 +63,7 @@ def hist1d(nbins,bin_low,bin_high):
     @param bin_high   Upper bin edge
     """
     binsize = float(bin_high-bin_low)/nbins
-    arr     = [i*binsize+bin_low for i in xrange(nbins+1)]
+    arr     = array('d',[i*binsize+bin_low for i in xrange(nbins+1)])
     return arr
 
 

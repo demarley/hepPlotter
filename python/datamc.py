@@ -12,6 +12,7 @@ from math import fabs
 from copy import deepcopy
 
 from histogram1D import Histogram1D
+from plotter import PlotterData
 
 import matplotlib.pyplot as plt
 from matplotlib import gridspec

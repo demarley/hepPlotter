@@ -26,8 +26,10 @@ from collections import OrderedDict
 import numpy as np
 import matplotlib.style
 import matplotlib as mpl
-thisfile = '{0}/cms.mplstyle'.format(os.path.dirname(os.path.abspath(__file__)))
-mpl.style.use(thisfile.replace('python','data'))
+
+thisfile  = os.path.dirname(os.path.realpath(__file__))
+stylefile = thisfile.replace('python','data')+'/cms.mplstyle'
+mpl.style.use(stylefile)
 
 import matplotlib.pyplot as plt
 from matplotlib import gridspec

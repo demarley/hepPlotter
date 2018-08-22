@@ -99,7 +99,8 @@ def data2list2D(data,weights=None,normed=False,binning=1):
     except TypeError:
         x = data[0]
         y = data[1]
-    data,bins_x,bins_y = np.histogram2d(x, y, bins=binning,density=normed,weights=weights)
+
+    data,bins_x,bins_y = np.histogram2d(x,y,bins=binning,density=normed,weights=weights)
 
     binnsx = []
     binnsy = []
@@ -109,7 +110,7 @@ def data2list2D(data,weights=None,normed=False,binning=1):
             binnsy.append(y)
 
     results = Data()
-    results.content = data
+    results.content = data.flatten()   # data is a ndarray (nxbins,nybins)
     results.error   = np.sqrt(data)
     results.bins    = {'x':np.array(bins_x),'y':np.array(bins_y)}
     results.center  = {'x':binnsx,'y':binnsy}

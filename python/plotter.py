@@ -33,7 +33,7 @@ mpl.style.use(stylefile)
 
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
-from matplotlib.ticker import FormatStrFormatter
+from matplotlib.ticker import FormatStrFormatter,LogFormatterSciNotation
 
 import tools
 import labels
@@ -106,6 +106,7 @@ class Plotter(object):
         self.saveAs = "result"               # save figure with name
         self.logplot = {"y":False,"x":False,"data":False}  # plot axes or data (2D) on log scale
 
+        self.format_minor_ticklabels = False
         self.text_coords = {'top left': {'x':[0.03]*3,        'y':[0.96,0.89,0.82]},\
                             'top right':{'x':[0.97]*3,        'y':[0.96,0.89,0.82]},\
                             'outer':    {'x':[0.02,0.99,0.99],'y':[1.0,1.0,0.9]}}
@@ -126,7 +127,7 @@ class Plotter(object):
             print " WARNING : Chosen format '{0}' may conflict with backend".format(self.format)
 
         if not self.axis_scale:
-            self.axis_scale = {'y':1.4,'x':1.0}
+            self.axis_scale = {'y':1.4,'x':-1}
             if self.dimensions==2: self.axis_scale['y'] = 1.0
 
         return
@@ -224,19 +225,20 @@ class Plotter(object):
 
         if self.xlim is not None:
             axis.set_xlim(self.xlim)
+        elif self.axis_scale.get('x',-1)>=0:
+            xlims = axis.get_xlim()
+            xlims = (xlims[0],xlims[1]*self.axis_scale['x'])
+            axis.set_xlim(xlims)
 
         axis.set_xlabel(self.x_label,ha='right',va='top',position=(1,0))
 
-        # Modify tick labels
-        formatter  = FormatStrFormatter('%g')
-        axis_ticks = axis.get_xticks()
+        # Modify tick labels after axis has been adjusted
+        axis_ticks = {'major':axis.get_xticks(),
+                      'minor':axis.get_xticks(minor=True)}
 
-        if self.logplot["x"]:
-            tick_labels = [r"10$^{\text{%s}}$"%(int(np.log10(i))) if i>0 else '' for i in axis_ticks]
-        else:
-            tick_labels = [formatter(i) for i in axis_ticks]
-
-        axis.set_xticklabels(tick_labels)
+        tick_labels = self.set_ticklabels(axis_ticks,axis="x")
+        axis.set_xticklabels(tick_labels.get('minor',[]), minor=True )
+        axis.set_xticklabels(tick_labels['major'])
 
         return
 
@@ -248,27 +250,45 @@ class Plotter(object):
 
         if self.ylim is not None:
             self.ax1.set_ylim(self.ylim)
-        else:
-            ymax_scale = self.axis_scale['y']
-            self.ax1.set_ylim(0.,ymax_scale*self.ax1.get_ylim()[1])  # scale axis to accommodate legend/text
+        elif self.ylim is None and self.dimensions==1:
+            # auto-scale upper part of axis to accommodate legend/text
+            ylims = self.ax1.get_ylim()
+            ylims = (ylims[0],ylims[1]*self.axis_scale['y'])
+            self.ax1.set_ylim(ylims)
 
         self.ax1.set_ylabel(self.y_label,ha='right',va='bottom',position=(0,1))
 
-        # Modify tick labels
-        formatter  = FormatStrFormatter('%g')
-        axis_ticks = self.ax1.get_yticks()
+        # Modify tick labels after axis has been adjusted
+        axis_ticks = {'major':self.ax1.get_yticks(),
+                      'minor':self.ax1.get_yticks(minor=True)}
 
-        if self.logplot["y"]:
-            tick_labels = [r"10$^{\text{%s}}$"%(int(np.log10(i))) if i>0 else '' for i in axis_ticks]
-            tick_labels = ["",""]+tick_labels[2:]
-        else:
-            tick_labels = [formatter(i) for i in axis_ticks]
-            tick_labels = [""]+tick_labels[1:]
-
-        self.ax1.set_yticklabels( tick_labels )
+        tick_labels = self.set_ticklabels(axis_ticks,axis="y")
+        self.ax1.set_yticklabels(tick_labels.get('minor',[]), minor=True )
+        self.ax1.set_yticklabels(tick_labels['major'] )
 
         return
 
+
+    def set_ticklabels(self,axis_ticks,axis="y"):
+        """Set tick labels (major and minor) for x/y-axes"""
+        formatter  = FormatStrFormatter('%g')
+        tlabels  = {'major':None}
+        if self.logplot[axis]:
+            tlabels['major'] = [r"10$^{\text{%s}}$"%(int(np.log10(i))) if i>0 else '' for i in axis_ticks['major']]
+            if axis=="y": tlabels['major'] = ["",""]+tlabels['major'][2:]
+
+            if self.format_minor_ticklabels:
+                mtlabels = []
+                for m,mtl in enumerate(axis_ticks['minor']):
+                    mtl_sci = format(mtl,'.0e').split("e")
+                    mtl_exp = int(mtl_sci[1])
+                    mtlabels.append( mtl_sci[0]+r'$\times$10$^\text{%d}$'%mtl_exp )
+                tlabels['minor'] = mtlabels
+        else:
+            tlabels['major'] = [formatter(i) for i in axis_ticks['major']]
+            if axis=="y": tlabels['major'] = [""]+tlabels['major'][1:]
+
+        return tlabels
 
 
     def text_labels(self,axis=None):
@@ -283,7 +303,7 @@ class Plotter(object):
         text = self.text_coords[self.CMSlabel]
 
         ## CMS, Energy, and LUMI labels
-        cms_stamp    = labels.CMSStamp(self.CMSlabelStatus)
+        cms_stamp = labels.CMSStamp(self.CMSlabelStatus)
 
         cms_stamp.coords = [text['x'][0], text['y'][0]]
         if self.CMSlabel=='top right':

@@ -88,10 +88,6 @@ class Histogram2D(Plotter):
         if self.CMSlabel is not None:
             self.text_labels()
 
-        # Configure the labels
-        if self.CMSlabel is not None:
-            self.text_labels()
-
         return fig
 
 
@@ -113,20 +109,23 @@ class Histogram2D(Plotter):
             print "         : Leaving colorbar title blank. "
 
         # Modify tick labels
-        axis_ticklabels = cbar.ax.get_yticklabels()
+        axis_ticklabels = [i.get_text() for i in cbar.ax.get_yticklabels()]
 
         if self.logplot['data']:
             for i,atl in enumerate(axis_ticklabels):
-                atl = atl.get_text()
-                if not atl.startswith("$10^{"): continue
-                exponent = tools.extract(atl)
-                axis_ticklabels[i] = r"10$^{\text{%s}}$"%exponent
+                if not "10^{" in atl: continue
+                atl = atl.strip("$")
+                power = r"10$^{\text{%s}}$"%tools.extract(atl)
+                tmp   = atl.split("\\times")
+                if len(tmp)>1:
+                    axis_ticklabels[i] = tmp[0]+r"$\times$"+power
+                else:
+                    axis_ticklabels[i] = power
         else:
-            axis_ticklabels = [i.get_text().strip("$") for i in axis_ticklabels]
-
+            axis_ticklabels = [i.strip("$") for i in axis_ticklabels]
 
         cbar_fsize = int(mpl.rcParams['axes.labelsize']*0.75)
-        cbar.ax.set_yticklabels(np.array(axis_ticklabels),
+        cbar.ax.set_yticklabels(axis_ticklabels,
                                 fontsize=cbar_fsize)
 
         # Modify tick sizes

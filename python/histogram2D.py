@@ -110,7 +110,6 @@ class Histogram2D(Plotter):
 
         # Modify tick labels
         axis_ticklabels = [i.get_text() for i in cbar.ax.get_yticklabels()]
-        [u'$10^{0}$', u'$2\\times10^{0}$']
 
         if self.logplot['data']:
             for i,atl in enumerate(axis_ticklabels):

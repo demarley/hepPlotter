@@ -225,7 +225,7 @@ class Plotter(object):
 
         if self.xlim is not None:
             axis.set_xlim(self.xlim)
-        elif self.axis_scale['x']>=0:
+        elif self.axis_scale.get('x',-1)>=0:
             xlims = axis.get_xlim()
             xlims = (xlims[0],xlims[1]*self.axis_scale['x'])
             axis.set_xlim(xlims)

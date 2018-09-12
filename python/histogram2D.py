@@ -109,11 +109,24 @@ class Histogram2D(Plotter):
             print "         : Leaving colorbar title blank. "
 
         # Modify tick labels
-        axis_ticks = {'major':cbar.ax.get_yticks()}
-        axis_ticklabels = self.set_ticklabels(axis_ticks,axis='data')
+        axis_ticklabels = [i.get_text() for i in cbar.ax.get_yticklabels()]
+        [u'$10^{0}$', u'$2\\times10^{0}$']
+
+        if self.logplot['data']:
+            for i,atl in enumerate(axis_ticklabels):
+                if not "10^{" in atl: continue
+                atl = atl.strip("$")
+                power = r"10$^{\text{%s}}$"%tools.extract(atl)
+                tmp   = atl.split("\\times")
+                if len(tmp)>1:
+                    axis_ticklabels[i] = tmp[0]+r"$\times$"+power
+                else:
+                    axis_ticklabels[i] = power
+        else:
+            axis_ticklabels = [i.strip("$") for i in axis_ticklabels]
 
         cbar_fsize = int(mpl.rcParams['axes.labelsize']*0.75)
-        cbar.ax.set_yticklabels(np.array(axis_ticklabels['major']),
+        cbar.ax.set_yticklabels(axis_ticklabels,
                                 fontsize=cbar_fsize)
 
         # Modify tick sizes

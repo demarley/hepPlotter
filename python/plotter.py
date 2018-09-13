@@ -57,18 +57,18 @@ class PlotterData(object):
         self.markerfacecolor = 'k'
         self.markersize = 6
         self.label  = ''
-        self.data   = None        # Data() object (tools.py)
+        self.data   = tools.Data() # Data() object (tools.py)
         self.normed = False
         self.weight = None
-        self.draw_type   = 'step' # 'step','stepfilled','errorbar' (others?)
-        self.plotData    = None   # get the data from the plot to use later
-        self.uncertainty = {}     # kwargs for drawing uncertainty of this object
-        self.isHistogram = False  # plt.hist()
-        self.isErrobar   = False  # plt.errorbar()
-        self.isLinePlot  = False  # basic plt.plot() -- not supported yet
-        self.isTH1  = False       # ROOT Histogram
-        self.isTEff = False       # ROOT TEfficiency
-        self.kwargs = {}          # extra kwargs for plotting
+        self.draw_type   = 'step'  # 'step','stepfilled','errorbar' (others?)
+        self.plotData    = None    # get the data from the plot to use later
+        self.uncertainty = {}      # kwargs for drawing uncertainty of this object
+        self.isHistogram = False   # plt.hist()
+        self.isErrobar   = False   # plt.errorbar()
+        self.isLinePlot  = False   # basic plt.plot() -- not supported yet
+        self.isTH1  = False        # ROOT Histogram
+        self.isTEff = False        # ROOT TEfficiency
+        self.kwargs = {}           # extra kwargs for plotting
 
 
 

@@ -13,10 +13,14 @@ from copy import deepcopy
 
 from histogram1D import Histogram1D
 from plotter import PlotterData
+import tools
 
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
 import numpy as np
+
+
+
 
 
 
@@ -26,7 +30,10 @@ class DataMC(Histogram1D):
         Histogram1D.__init__(self)
         self.stack_signal = False
         self.normed       = False
-        self.blind_data   = False    # blind data (just on/off for now -- expand!)
+        self.blind_data   = None    # blind data (just on/off for now -- expand!)
+                                    # Overrides any data/asimov you pass to hepPlotter
+        self.asimov       = False   # Draw 'asimov' data (total background)
+                                    # Overrides any data you pass to hepPlotter
 
         self.ratio.value  = "ratio"
         self.ratio.ylabel = "Data/MC"
@@ -69,18 +76,29 @@ class DataMC(Histogram1D):
 
 
         ##  Data points
-        # if self.blind_data: self.blind(data2plot)
         if data2plot is not None:
+            if self.asimov:
+                data2plot = self.make_asimov(bckg2plot)
+
+            if self.blind_data is not None:
+                data2plot = self.make_blind(data2plot)
+
             data2plot.draw_type = 'errorbar'
             data2plot.kwargs["zorder"] = 125
-            tmp_data2plot = self.plotErrorbar(data2plot)
-            data2plot     = tmp_data2plot           # update data
-        else:
+            tmp_data  = self.plotErrorbar(data2plot)
+            data2plot = tmp_data
+        elif data2plot is None:
             data2plot = PlotterData('data')
-            # Use a sample from the bckg2plot[0] to fill data2plot with dummy values
-            data2plot.data = deepcopy(bckg2plot[0])
-            data2plot.draw_type = 'errorbar'
-            data2plot.data.content = np.array( [np.nan for _ in data2plot.data.content] )
+            data2plot.data         = tools.Data()
+            data2plot.data.content = np.array( [np.nan for _ in bckg2plot[0].data.content] )
+
+            if self.asimov:
+                # Use the total bckg to plot 'asimov' data
+                data2plot = self.make_asimov(bckg2plot)
+                data2plot.draw_type = 'errorbar'
+                data2plot.kwargs["zorder"] = 125
+                tmp_data  = self.plotErrorbar(data2plot)
+                data2plot = tmp_data
         self.data2plot[data2plot.name] = data2plot  # update the dictionary
 
         ##  Background samples
@@ -105,8 +123,8 @@ class DataMC(Histogram1D):
                 bckg_unc += np.square(hist2plot.data.error.copy())
 
         # store the total background prediction and uncertainty
-        prediction = deepcopy(bckg2plot[0])
-        prediction.plotData     = bottom.copy()
+        prediction = deepcopy(bckg2plot[0])       # copy attributes from bckg2plot
+        prediction.plotData     = bottom.copy()   # copy data from sum of all bckgs
         prediction.data.content = bottom.copy()
         prediction.data.error   = np.sqrt( bckg_unc )
         self.data2plot['total_bckg'] = prediction
@@ -181,15 +199,30 @@ class DataMC(Histogram1D):
         return
 
 
-    def blind(self,data):
+    def make_asimov(self,backgrounds):
+        """Calculate asimov (pseudo-data) from backgrounds"""
+        pseudo      = sum( [x.data.content for x in backgrounds] )
+        asimov_data = PlotterData('data')
+        asimov_data.data = deepcopy(backgrounds[0].data)  # copy attributes of background
+        asimov_data.data.content = pseudo
+        asimov_data.data.error   = np.array( [np.sqrt(i) for i in pseudo] )
+        return asimov_data
+
+
+    def make_blind(self,data):
         """
         Blind the data distribution in the plots.
         
         - Simple boolean ON/OFF    : mode = 'bool'
+        - Value cut                : mode = 'value';        value = x>cut
         - Signficance cut          : mode = 'significance'; value = <significance>
         - % contribution in a bin  : mode = 'yield';        value = <percent_yield>
         """
-        pass
+        if self.blind_data=='bool':
+            # mask all data points
+            data.data.content = np.array( [np.nan for _ in data.data.content] )
+
+        return data
 
 
 ## THE END

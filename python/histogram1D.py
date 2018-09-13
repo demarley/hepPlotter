@@ -210,6 +210,7 @@ class Histogram1D(Plotter):
         self.ratio.initialize()       # set parameters for ratio plots
         value = self.ratio.value      # type of plot (ratio/significance)
 
+        min_ratio = 0
         for d in self.ratio.ratios2plot:
             numerator   = self.data2plot[d['numerator']]
             denominator = self.data2plot[d['denominator']]
@@ -234,6 +235,9 @@ class Histogram1D(Plotter):
                 # significance = s/sqrt(b) for now
                 ratio_data.data.content = (num_data / np.sqrt(den_data)).copy()
                 ratio_data.data.error   = None
+
+            min_ratio_data = min(ratio_data.data.content)
+            if min_ratio_data<min_ratio: min_ratio=min_ratio_data
 
             # make the ratio plot
             inf_ind = np.where( np.isinf(ratio_data.data.content) )  # remove infinities 
@@ -270,7 +274,12 @@ class Histogram1D(Plotter):
         ## Modify tick marks for y-axis
         axis_ticks = self.ratio.yticks if value=='ratio' else self.ax2.get_yticks()[::2]
         self.ax2.set_yticks(axis_ticks)
-        self.ax2.set_ylim(  self.ratio.ylim)
+        if self.ratio.ylim is not None:
+            self.ax2.set_ylim(  self.ratio.ylim)
+        elif self.ratio.ylim is None and value=='significance':
+            ylims = self.ax2.get_ylim()
+            if ylims[0]<0 and min_ratio>=0:
+                self.ax2.set_ylim(0,ylims[1])
         self.ax2.set_ylabel(self.ratio.ylabel,ha='center',va='bottom')
 
         # Modify tick labels
@@ -352,7 +361,7 @@ class PlotterRatio(object):
     def __init__(self):
         self.ratios2plot  = []   # list of dictionaries containing information for ratio
         self.listOfRatios = []   # list of tuples (numerator,denominator) to monitor which ratios to plot
-        self.value  = 'ratio'    # kind of ratio plot (ratio or significance at the moment)
+        self.value  = 'ratio'    # kind of ratio plot ('ratio' or 'significance')
         self.ylim   = None
         self.yticks = None
         self.ylabel = ''

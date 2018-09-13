@@ -1,13 +1,13 @@
 """
 Created:         1 September 2016
-Last Updated:   16 February  2018
+Last Updated:   12 September 2018
 
 Dan Marley
 daniel.edison.marley@cernSPAMNOT.ch
 Texas A&M University
 -----
 
-Simple functions to help with basic plots.
+Simple functions to help with plotting
 """
 import ROOT
 import numpy as np
@@ -20,15 +20,9 @@ def extract(str_value, start_='{', stop_='}'):
     return extraction
 
 
-def getName(filename):
-    """Given a root file full of histograms, return the sample name
-    example name: TTS_M500_XXX.root
-    can be customized by users depending on their files
-    best (future) solution: metadata in root file with "name" option
-    """
-    name = filename.split(".root")[0].split("/")[-1]
-
-    return name
+def midpoints(data):
+    """Return the midpoint of bins given the bin edges"""
+    return 0.5*(data[:-1]+data[1:])
 
 
 def getDataStructure(h_data):
@@ -102,12 +96,12 @@ def data2list2D(data,weights=None,normed=False,binning=1):
 
     data,bins_x,bins_y = np.histogram2d(x,y,bins=binning,density=normed,weights=weights)
 
-    binnsx = []
-    binnsy = []
-    for x in 0.5*(bins_x[:-1]+bins_x[1:]):
-        for y in 0.5*(bins_y[:-1]+bins_y[1:]):
-            binnsx.append(x)
-            binnsy.append(y)
+
+    # create dummy binning
+    bins_x = midpoints(bins_x)  # get midpoints of bins given the bin edges
+    bins_y = midpoints(bins_y)
+    xbins = binsx.repeat(len(bins_y))
+    ybins = np.tile(binsy, (1,len(bins_x)) )[0]
 
     results = Data()
     results.content = data.flatten()   # data is a ndarray (nxbins,nybins)

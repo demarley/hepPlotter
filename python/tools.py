@@ -101,7 +101,7 @@ def data2list2D(data,weights=None,normed=False,binning=1):
     bins_x = midpoints(bins_x)  # get midpoints of bins given the bin edges
     bins_y = midpoints(bins_y)
     xbins = binsx.repeat(len(bins_y))
-    ybins = np.tile(binsy, (1,len(bins_x)) )[0]
+    ybins = np.tile(bins_y, (1,len(bins_x)) )[0]
 
     results = Data()
     results.content = data.flatten()   # data is a ndarray (nxbins,nybins)

@@ -343,9 +343,9 @@ class Plotter(object):
 
 
 
-    def savefig(self):
-        """Save the figure"""
-        plt.savefig(self.saveAs+'.'+self.format)
+    def savefig(self,**kwargs):
+        """Save the figure. Use kwargs to modify arguments from style file"""
+        plt.savefig(self.saveAs+'.'+self.format,**kwargs)
         plt.close()
 
         return

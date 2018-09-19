@@ -8,11 +8,9 @@ Texas A&M University
 -----
 
 File for containing information about plotting.
-Note: in hepPlotter package, function "hist1d" is deprecated
 """
 from array import array
 from collections import OrderedDict
-from tools import hist1d
 
 
 

@@ -49,17 +49,6 @@ def getDataStructure(h_data):
     return colormap
 
 
-def hist1d(nbins,bin_low,bin_high):
-    """
-    Set the binning for each histogram.
-    @param nbins	  Number of bins in histogram
-    @param bin_low    Lower bin edge
-    @param bin_high   Upper bin edge
-    """
-    binsize = float(bin_high-bin_low)/nbins
-    arr     = array('d',[i*binsize+bin_low for i in xrange(nbins+1)])
-    return arr
-
 
 class Data(object):
     def __init__(self):

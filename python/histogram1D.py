@@ -286,6 +286,11 @@ class Histogram1D(Plotter):
         formatter = FormatStrFormatter('%g')
         self.ax2.set_yticklabels(np.array([formatter(i) for i in axis_ticks]))
 
+        if self.ratio.update_legend:
+            extra_handles,extra_labels = self.ax2.get_legend_handles_labels()
+            self.legend['extra_handles'] = extra_handles
+            self.legend['extra_labels']  = extra_labels
+
         return
 
 
@@ -365,6 +370,7 @@ class PlotterRatio(object):
         self.ylim   = None
         self.yticks = None
         self.ylabel = ''
+        self.update_legend = False   # add ratio values to legend on main plot
 
     def initialize(self):
         """Set some default options if not set by the user"""

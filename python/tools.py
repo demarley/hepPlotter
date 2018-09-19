@@ -73,7 +73,7 @@ class Data(object):
 
 def data2list(data,weights=None,normed=False,binning=1):
     """Convert array of data into dictionary of information matching 'hist2list' """
-    data,bins = np.histogram(data,bins=binning,weights=weights,density=normed)
+    data,bins = np.histogram(data,bins=binning,weights=weights,normed=normed)
 
     results = Data()
     results.content = data
@@ -94,20 +94,20 @@ def data2list2D(data,weights=None,normed=False,binning=1):
         x = data[0]
         y = data[1]
 
-    data,bins_x,bins_y = np.histogram2d(x,y,bins=binning,density=normed,weights=weights)
+    data,bins_x,bins_y = np.histogram2d(x,y,bins=binning,normed=normed,weights=weights)
 
 
     # create dummy binning
-    bins_x = midpoints(bins_x)  # get midpoints of bins given the bin edges
-    bins_y = midpoints(bins_y)
-    xbins = binsx.repeat(len(bins_y))
-    ybins = np.tile(bins_y, (1,len(bins_x)) )[0]
+    mbins_x = midpoints(bins_x)  # get midpoints of bins given the bin edges
+    mbins_y = midpoints(bins_y)
+    xbins = mbins_x.repeat(len(mbins_y))
+    ybins = np.tile(mbins_y, (1,len(mbins_x)) )[0]
 
     results = Data()
     results.content = data.flatten()   # data is a ndarray (nxbins,nybins)
     results.error   = np.sqrt(data)
     results.bins    = {'x':np.array(bins_x),'y':np.array(bins_y)}
-    results.center  = {'x':binnsx,'y':binnsy}
+    results.center  = {'x':xbins,'y':ybins}
     results.width   = {'x':0.5*(bins_x[:-1]-bins_x[1:]),
                        'y':0.5*(bins_y[:-1]-bins_y[1:])}
 

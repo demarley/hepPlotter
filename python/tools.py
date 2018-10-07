@@ -9,9 +9,29 @@ Texas A&M University
 
 Simple functions to help with plotting
 """
-import ROOT
 import numpy as np
 from array import array
+
+ROOT_available   = False
+uproot_available = False
+try:
+    import ROOT
+    ROOT_available = True
+except ImportError:
+    ROOT_available = False
+    print " 'CERN ROOT' not available, trying 'uproot'"
+    try:
+        import uproot as up
+        uproot_available = True
+    except ImportError:
+        uproot_available = False
+        print " 'uproot' not available.  Will not be able to load ROOT histograms"
+
+if ROOT_available and uproot_available:
+    print " Both 'CERN ROOT' and 'uproot' available; defaulting to 'uproot'"
+    ROOT_available = False
+
+
 
 def extract(str_value, start_='{', stop_='}'):
     """Extract a string between two symbols, e.g., parentheses."""
@@ -105,32 +125,44 @@ def data2list2D(data,weights=None,normed=False,binning=1):
 
 def hist2list(histo,name='',normed=False,reBin=1):
     """Convert ROOT histogram to (dictionary of) lists"""
-    if not histo.GetSumw2N():
-        histo.Sumw2()
-
-    if normed:
-        integral = histo.Integral()
-        histo.Scale(1./integral);
-
-    try:
-        histo.Rebin(reBin)
-    except TypeError:
-        newname = histo.GetName()+"_"+name
-        histo.Rebin(len(reBin)-1,newname,reBin)
-        histo = ROOT.gROOT.FindObject( newname )
-
     bin_centers  = []
     bin_contents = []
     bin_errors   = []
     bin_widths   = []
-    bin_edges    = [histo.GetXaxis().GetBinLowEdge(1)]
+    bin_edges    = []
 
-    for i in xrange(1,histo.GetNbinsX()+1):
-        bin_edges.append(histo.GetXaxis().GetBinUpEdge(i))
-        bin_centers.append(histo.GetBinCenter(i))
-        bin_contents.append(histo.GetBinContent(i))
-        bin_errors.append(histo.GetBinError(i))
-        bin_widths.append(histo.GetXaxis().GetBinWidth(i)/2.)
+    if uproot_available:
+        if normed:
+            histo = np.divide(histo,np.sum(histo),dtype=np.float32)
+
+        bin_contents,bin_edges = histo.numpy()
+        bin_errors   = np.array(h.variances) if h.variances else bin_contents
+        bin_centers  = midpoints(bin_edges)
+        bin_widths   = data[1:] - data[:-1]
+    elif ROOT_available:
+		if not histo.GetSumw2N():
+			histo.Sumw2()
+
+		if normed:
+			integral = histo.Integral()
+			histo.Scale(1./integral);
+
+		try:
+			histo.Rebin(reBin)
+		except TypeError:
+			newname = histo.GetName()+"_"+name
+			histo.Rebin(len(reBin)-1,newname,reBin)
+			histo = ROOT.gROOT.FindObject( newname )
+
+		bin_edges = [histo.GetXaxis().GetBinLowEdge(1)]
+
+		for i in xrange(1,histo.GetNbinsX()+1):
+			bin_edges.append(histo.GetXaxis().GetBinUpEdge(i))
+			bin_centers.append(histo.GetBinCenter(i))
+			bin_contents.append(histo.GetBinContent(i))
+			bin_errors.append(histo.GetBinError(i))
+			bin_widths.append(histo.GetXaxis().GetBinWidth(i)/2.)
+
 
     results = Data()
     results.content = np.array(bin_contents)

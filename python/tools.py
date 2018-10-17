@@ -10,7 +10,6 @@ Texas A&M University
 Simple functions to help with plotting & accessing data
 """
 import numpy as np
-from array import array
 
 
 m_scipy_available  = False  # for re-binning 2D histograms
@@ -149,7 +148,7 @@ def data2list2D(data,weights=None,normed=False,binning=1):
     return results
 
 
-def hist2list(histo,name='',normed=False,reBin=-1):
+def hist2list(histo,name='',normed=False,reBin=None):
     """
     Convert ROOT histogram to (dictionary of) lists.
     For re-binning, try to mirror CERN ROOT functionality with numpy histograms.
@@ -165,7 +164,7 @@ def hist2list(histo,name='',normed=False,reBin=-1):
         if normed:
             bin_contents = np.divide(bin_contents,np.sum(bin_contents),dtype=np.float32)
 
-        bin_errors  = np.array(histo.variances) if histo.variances else bin_contents
+        bin_errors  = histo.variances if len(histo.variances) else bin_contents
         bin_centers = midpoints(bin_edges)
 
         if reBin is not None:
@@ -186,13 +185,15 @@ def hist2list(histo,name='',normed=False,reBin=-1):
             # with variable binning -- edges must still line up!
             bin_contents,bin_edges = np.histogram(bin_centers,bins=reBin,weights=bin_contents,normed=normed)
             nbin_edges = len(bin_edges)
-            if not histo.variances:
+            if len(histo.variances):
                 # re-bin bin errors
                 bin_index   = np.digitize(bin_centers, bin_edges)  # find where original values migrated in new binning
                 bin_weights = np.asarray([bin_errors[np.where(bin_index==idx)[0]] for idx in range(1,nbin_edges)])
-                bin_errors  = np.sqrt( np.sum(np.square(binned_weights)) )
+                bin_weights_sqr = np.square(bin_weights)
+                bin_weights_sum = [ np.sum(i) for i in bin_weights_sqr ] # in case the array has variable length elements
+                bin_errors      = np.sqrt( bin_weights_sum )
             else:
-                bin_errors  = bin_contents
+                bin_errors  = bin_contents.copy()
 
         # set the bin centers and widths
         bin_centers = midpoints(bin_edges)
@@ -248,7 +249,7 @@ def hist2list2D(histo,name='',reBin=None,normed=False):
             histo = np.divide(histo,np.sum(histo),dtype=np.float32)
 
         bin_contents,(xbin_edges,ybin_edges) = histo.numpy()
-        bin_errors = histo.variances if histo.variances else bin_contents
+        bin_errors = histo.allvariances[1:-1,1:-1] if len(histo.allvariances) else bin_contents
 
         if reBin is not None:
             # re-bin the histogram (by making a new histogram)
@@ -272,9 +273,12 @@ def hist2list2D(histo,name='',reBin=None,normed=False):
                 except TypeError:
                     xrebin = reBin[0]
                     yrebin = reBin[1]
+
                 if (not all((i in xbin_edges) for i in xrebin)) or (not all((i in ybin_edges) for i in yrebin)):
                     print " WARNING : Cannot re-bin 2D histogram using {0}".format(reBin)
                     print "         : Not re-binning histogram"
+                    xrebin = xbin_edges.copy() # default to original binning
+                    yrebin = ybin_edges.copy() # default to original binning
 
             # - generate dummy values of the bin centers and pass data as weights
             ymbins = midpoints(xbin_edges)
@@ -290,21 +294,27 @@ def hist2list2D(histo,name='',reBin=None,normed=False):
             nybins = len(ybin_edges)-1
             xbins_unravel = nxbins+2
             ybins_unravel = nybins+2
-            if not histo.variances and m_scipy_available:
+            if len(histo.variances) and m_scipy_available:
                 # rebin the histogram to see where the old bins get merged into new bins
                 s,bx,by,bin_index = scipy.stats.binned_statistic_2d(xbins,ybins,xbins,bins=[xrebin,yrebin])
                 # convert scipy bin_index to bin_index of given array (scipy includes over/underflow)
                 unrv_bc = np.unravel_index(bin_index,[xbins_unravel,ybins_unravel])
                 bin_idx = np.array(unrv_bc).T-1      # convert unrv_bc from tuple to 2D array
                 # combine weights in quadrature into array
-                bin_errors = np.zeros(nxbins*nybins).reshape(nxbins,nybins) # same shape as hist
+                fbin_errors = bin_errors.flatten()
+                bin_weights = np.zeros(nxbins*nybins).reshape(nxbins,nybins) # same shape as hist
                 for ix in range(nxbins):
                     for iy in range(nybins):
                         matches = [ib==[ix,iy] for ib in bin_idx.tolist()]
-                        bin_errors[ix][iy] = np.sqrt( np.sum(np.square(e[matches])) )
+                        #bin_weights_sqr     = np.square(fbin_errors[matches])
+                        #bin_weights_sum     = [ np.sum(i) for i in bin_weights_sqr ] # in case the array has variable length elements
+#                         print bin_weights_sqr
+#                         print bin_weights_sum
+#                         bin_weights[ix][iy] = np.sqrt( bin_weights_sum )
+                        bin_weights[ix][iy] = np.sqrt( np.sum( np.square(fbin_errors[matches])))
+                bin_errors = bin_weights.copy()
             else:
-                print " WARNING :: Tools : Either no scipy or variances, just use re-binned content"
-                bin_errors = bin_contents
+                bin_errors = bin_contents.copy()
 
         bin_contents = bin_contents.flatten()
         bin_errors   = bin_errors.flatten()

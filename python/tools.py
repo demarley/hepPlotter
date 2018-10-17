@@ -244,19 +244,25 @@ def hist2list2D(histo,name='',reBin=None,normed=False):
             bin_contents,xbin_edges,ybin_edges = rb_hist2d
             mbins_x = midpoints(xbin_edges)  # get midpoints of bins given the bin edges
             mbins_y = midpoints(ybin_edges)
-            nbin_edges = len(xbin_edges)*len(ybin_edges)
-            if not histo.variances:
+            xbins_unravel = len(xbin_edges)+1
+            ybins_unravel = len(ybin_edges)+1
+            nbin_edges    = xbins_unravel*ybins_unravel
+            if not histo.variances and m_scipy_available:
                 # re-bin bin errors
-                bin_errors  = bin_errors.flatten()
                 s,bx,by,bin_index = scipy.stats.binned_statistic_2d(x,y,x,bins=10)
-                bin_weights = np.asarray([bin_errors[np.where(bin_index==idx)[0]] for idx in range(1,nbin_edges)])
+                # convert scipy bin_index to bin_index of given array (scipy includes over/underflow)
+                bin_weights = []
+                bin_index = np.unravel_index(bin_index,(xbins_unravel,ybins_unravel))
+                for ix in range(xbins_unravel):
+                    for iy in range(ybins_unravel):
+                        bin_weights.append(bin_errors[np.where(bin_index==idx)[0]])
                 bin_errors  = np.sqrt( np.sum(np.square(binned_weights)) )
             else:
-                bin_errors  = bin_contents.flatten()
+                bin_errors  = bin_contents
 
         bin_contents = bin_contents.flatten()
         bin_edges    = {'x':xbin_edges,'y':ybin_edges}
-        bin_errors   = bin_errors
+        bin_errors   = bin_errors.flatten()
         bin_centers  = {'x':mbins_x,'y':mbins_y}
         bin_widths   = {'x':xbin_edges[1:]-xbin_edges[:-1],'y':ybin_edges[1:]-ybin_edges[:-1]}
     elif m_ROOT_available:

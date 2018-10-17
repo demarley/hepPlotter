@@ -306,16 +306,12 @@ def hist2list2D(histo,name='',reBin=None,normed=False):
                 for ix in range(nxbins):
                     for iy in range(nybins):
                         matches = [ib==[ix,iy] for ib in bin_idx.tolist()]
-                        #bin_weights_sqr     = np.square(fbin_errors[matches])
-                        #bin_weights_sum     = [ np.sum(i) for i in bin_weights_sqr ] # in case the array has variable length elements
-#                         print bin_weights_sqr
-#                         print bin_weights_sum
-#                         bin_weights[ix][iy] = np.sqrt( bin_weights_sum )
                         bin_weights[ix][iy] = np.sqrt( np.sum( np.square(fbin_errors[matches])))
                 bin_errors = bin_weights.copy()
             else:
                 bin_errors = bin_contents.copy()
 
+        print bin_contents.shape
         bin_contents = bin_contents.flatten()
         bin_errors   = bin_errors.flatten()
         bin_edges    = {'x':xbin_edges,'y':ybin_edges}

@@ -12,8 +12,17 @@ Simple functions to help with plotting
 import numpy as np
 from array import array
 
+
+m_scipy_available  = False  # for 2D rebinning
 m_ROOT_available   = False
 m_uproot_available = False
+
+try:
+    import scipy.stats
+    m_scipy_available = True
+except ImportError:
+    m_scipy_available = False
+
 try:
     import ROOT
     m_ROOT_available = True
@@ -36,13 +45,7 @@ if m_ROOT_available and m_uproot_available:
 def extract(str_value, start_='{', stop_='}'):
     """Extract a string between two symbols, e.g., parentheses."""
     extraction = str_value[str_value.index(start_)+1:str_value.index(stop_)]
-
     return extraction
-
-
-def midpoints(data):
-    """Return the midpoint of bins given the bin edges"""
-    return 0.5*(data[:-1]+data[1:])
 
 
 def getDataStructure(h_data):
@@ -70,6 +73,13 @@ def getDataStructure(h_data):
 
 
 
+##########################################################################################
+# Extract data from histograms / TEfficiencies / arrays & organize into custom object
+def midpoints(data):
+    """Return the midpoint of bins given the bin edges"""
+    return 0.5*(data[:-1]+data[1:])
+
+
 class Data(object):
     def __init__(self):
         """Store data for plotting (collection of arrays) in a class"""
@@ -78,6 +88,12 @@ class Data(object):
         self.bins    = None
         self.center  = None
         self.width   = None
+        self.xbins   = None
+        self.ybins   = None
+        self.xcenter = None
+        self.ycenter = None
+        self.xwidth  = None
+        self.ywidth  = None
 
 
 def data2list(data,weights=None,normed=False,binning=1):
@@ -105,7 +121,6 @@ def data2list2D(data,weights=None,normed=False,binning=1):
 
     data,bins_x,bins_y = np.histogram2d(x,y,bins=binning,normed=normed,weights=weights)
 
-
     # create dummy binning
     mbins_x = midpoints(bins_x)  # get midpoints of bins given the bin edges
     mbins_y = midpoints(bins_y)
@@ -115,10 +130,18 @@ def data2list2D(data,weights=None,normed=False,binning=1):
     results = Data()
     results.content = data.flatten()   # data is a ndarray (nxbins,nybins)
     results.error   = np.sqrt(data)
-    results.bins    = {'x':np.array(bins_x),'y':np.array(bins_y)}
+
+    results.xbins   = np.array(bins_x)
+    results.ybins   = np.array(bins_y)
+    results.xcenter = xbins
+    results.ycenter = ybins
+    results.xwidth  = 0.5*(bins_x[:-1]-bins_x[1:])
+    results.ywidth  = 0.5*(bins_y[:-1]-bins_y[1:])
+
+    results.bins    = {'x':results.xbins,'y':results.ybins}
     results.center  = {'x':xbins,'y':ybins}
-    results.width   = {'x':0.5*(bins_x[:-1]-bins_x[1:]),
-                       'y':0.5*(bins_y[:-1]-bins_y[1:])}
+    results.width   = {'x':results.xwidth,
+                       'y':results.ywidth}
 
     return results
 
@@ -132,45 +155,26 @@ def hist2list(histo,name='',normed=False,reBin=-1):
     bin_edges    = []
 
     if m_uproot_available:
-        if normed:
-            histo = np.divide(histo,np.sum(histo),dtype=np.float32)
-
         bin_contents,bin_edges = histo.numpy()
+        if normed:
+            bin_contents = np.divide(bin_contents,np.sum(bin_contents),dtype=np.float32)
+
         bin_errors  = np.array(histo.variances) if histo.variances else bin_contents
         bin_centers = midpoints(bin_edges)
 
-        if isinstance(reBin, (int,long)):
-            # merge bins together by some integer factor 'reBin'
-            if reBin>0 and not bin_contents.size%reBin:
-                bin_contents = np.array( [np.sum(histo[i:i+reBin]) for i in range(0,bin_contents.size,reBin)] )
-                bin_edges    = np.array( [bin_edges[i] for i in range(0,bin_edges.size,reBin)] )
-                if not h.variances:
-                    bin_errors = np.sqrt([np.sum(np.square(histo[i:i+reBin])) for i in range(0,bin_contents.size,reBin)])
-                else:
-                    bin_errors = bin_contents.copy()
-            if bin_contents.size%reBin:
-                print " WARNING : Cannot rebin in {0} bins".format(reBin)
-        else:
-            # merge bins into variable binned array
-            if all( (i in bin_edges) for i in reBin ):
-                # check that the new bin edges match existing bin edges
-                new_bin_contents  = [0. for i in reBin[1:]]
-                new_bin_variances = [0. for i in reBin[1:]]
-                new_bin_edges     = [i for i in reBin]
-
-                for i,(bc,be) in enumerate(zip(bin_contents,bin_errors)):
-                    new_bin = 0
-                    current_bin = bin_centers[i]
-                    for i,nbe in enumerate(new_bin_edges[:-1]):
-                        if current_bin>i and current_bin<new_bin_edges[i+1]:
-                            new_bin = i
-                            break
-                    new_bin_contents[new_bin]  += bc
-                    new_bin_variances[new_bin] += be**2
-
-                bin_contents = np.array(new_bin_contents)
-                bin_edges    = np.array(new_bin_edges)
-                bin_errors   = np.sqrt( new_bin_variances )
+        if reBin is not None:
+            # re-bin the histogram (by making a new histogram)
+            # - let numpy handle the type of 'reBin'
+            bin_contents,bin_edges = np.histogram(bin_centers,bins=reBin,weights=bin_contents,normed=normed)
+            bin_centers = midpoints(bin_edges)
+            nbin_edges  = len(bin_edges)
+            if not histo.variances:
+                # re-bin bin errors
+                bin_index   = np.digitize(bin_centers, bin_edges) # values start at 1, not 0
+                bin_weights = np.asarray([bin_errors[np.where(bin_index==idx)[0]] for idx in range(1,nbin_edges)])
+                bin_errors  = np.sqrt( np.sum(np.square(binned_weights)) )
+            else:
+                bin_errors  = bin_contents
 
         # set the bin centers and widths
         bin_centers = midpoints(bin_edges)
@@ -199,7 +203,6 @@ def hist2list(histo,name='',normed=False,reBin=-1):
 			bin_errors.append(histo.GetBinError(i))
 			bin_widths.append(histo.GetXaxis().GetBinWidth(i)/2.)
 
-
     results = Data()
     results.content = np.array(bin_contents)
     results.error   = np.array(bin_errors)
@@ -224,13 +227,38 @@ def hist2list2D(histo,name='',reBin=None,normed=False):
             histo = np.divide(histo,np.sum(histo),dtype=np.float32)
 
         bin_contents,(xbin_edges,ybin_edges) = histo.numpy()
+        bin_errors = histo.variances if histo.variances else bin_contents
+
+        # create dummy binning for pseudo-data
+        mbins_x = midpoints(xbin_edges)  # get midpoints of bins given the bin edges
+        mbins_y = midpoints(ybin_edges)
+
+        if reBin is not None:
+            # re-bin the histogram (by making a new histogram)
+            # - let numpy handle the type of 'reBin'
+            # - generate dummy values of the bin centers and pass data as weights
+            xbins = mbins_x.repeat(len(mbins_y))
+            ybins = np.tile(mbins_y, (1,len(mbins_x)))[0]
+            rb_hist2d = np.histogram2d(xbins,ybins,bins=reBin,normed=normed,\
+                                       weights=bin_contents.flatten())
+            bin_contents,xbin_edges,ybin_edges = rb_hist2d
+            mbins_x = midpoints(xbin_edges)  # get midpoints of bins given the bin edges
+            mbins_y = midpoints(ybin_edges)
+            nbin_edges = len(xbin_edges)*len(ybin_edges)
+            if not histo.variances:
+                # re-bin bin errors
+                bin_errors  = bin_errors.flatten()
+                s,bx,by,bin_index = scipy.stats.binned_statistic_2d(x,y,x,bins=10)
+                bin_weights = np.asarray([bin_errors[np.where(bin_index==idx)[0]] for idx in range(1,nbin_edges)])
+                bin_errors  = np.sqrt( np.sum(np.square(binned_weights)) )
+            else:
+                bin_errors  = bin_contents.flatten()
 
         bin_contents = bin_contents.flatten()
         bin_edges    = {'x':xbin_edges,'y':ybin_edges}
-        bin_errors   = np.array(histo.variances) if histo.variances else bin_contents
-        bin_centers  = {'x':midpoints(xbin_edges),'y':midpoints(ybin_edges)}
-        bin_widths   = {'x':xbin_edges[1:] - xbin_edges[:-1],\
-                        'y':ybin_edges[1:] - ybin_edges[:-1]}
+        bin_errors   = bin_errors
+        bin_centers  = {'x':mbins_x,'y':mbins_y}
+        bin_widths   = {'x':xbin_edges[1:]-xbin_edges[:-1],'y':ybin_edges[1:]-ybin_edges[:-1]}
     elif m_ROOT_available:
         if not histo.GetSumw2N():
             histo.Sumw2()
@@ -244,9 +272,8 @@ def hist2list2D(histo,name='',reBin=None,normed=False):
             try:
                 histo.Rebin2D(reBin,reBin)
             except TypeError:
-                newname = histo.GetName()+"_"+name
-    
-                old_histo = histo.Clone()     # special rebinning, redefine histo
+                newname   = histo.GetName()+"_"+name
+                old_histo = histo.Clone()             # special rebinning, redefine histo
                 new_x     = reBin['x']
                 new_y     = reBin['y']
                 histo     = ROOT.TH2F(old_histo.GetName()+newname,old_histo.GetTitle()+newname,len(new_x)-1,new_x,len(new_y)-1,new_y)
@@ -256,7 +283,6 @@ def hist2list2D(histo,name='',reBin=None,normed=False):
                     for j in xrange(1,yaxis.GetNbins()):
                         histo.Fill(xaxis.GetBinCenter(i),yaxis.GetBinCenter(j),old_histo.GetBinContent(i,j) )
 
-
         bin_edges = {'x':[histo.GetXaxis().GetBinLowEdge(1)],\
                      'y':[histo.GetYaxis().GetBinLowEdge(1)]}
         bin_edges['x']+=[histo.GetXaxis().GetBinUpEdge(i) for i in xrange(1,histo.GetNbinsX()+1)]
@@ -264,19 +290,25 @@ def hist2list2D(histo,name='',reBin=None,normed=False):
 
         for i in xrange(1,histo.GetNbinsX()+1):
             for j in xrange(1,histo.GetNbinsY()+1):
-                bin_centers['x'].append(histo.GetXaxis().GetBinCenter(i))
-                bin_centers['y'].append(histo.GetYaxis().GetBinCenter(j))
-
                 bin_contents.append(histo.GetBinContent(i,j))
                 bin_errors.append(histo.GetBinError(i,j))
-
+                bin_centers['x'].append(histo.GetXaxis().GetBinCenter(i))
+                bin_centers['y'].append(histo.GetYaxis().GetBinCenter(j))
                 bin_widths['x'].append(histo.GetXaxis().GetBinWidth(i)/2.)
                 bin_widths['y'].append(histo.GetYaxis().GetBinWidth(i)/2.)
 
     results = Data()
     results.content = np.array(bin_contents)
     results.error   = np.array(bin_errors)
-    results.bins    = {'x':np.array(bin_edges['x']), 'y':np.array(bin_edges['y']) }
+
+    results.xbins   = np.array(bin_edges['x'])
+    results.ybins   = np.array(bin_edges['y'])
+    results.xcenter = bin_centers['x']
+    results.ycenter = bin_centers['y']
+    results.xwidth  = bin_widths['x']
+    results.ywidth  = bin_widths['y']
+
+    results.bins    = {'x':results.xbins, 'y':results.ybins}
     results.center  = bin_centers
     results.width   = bin_widths
 

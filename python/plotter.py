@@ -20,7 +20,6 @@ Base class for turning histograms or efficiency curves into plots
 """
 import os
 import sys
-import ROOT
 from collections import OrderedDict
 
 import numpy as np
@@ -37,6 +36,14 @@ from matplotlib.ticker import FormatStrFormatter,LogFormatterSciNotation
 
 import tools
 import labels
+
+m_ROOT_available = False
+try:
+    import ROOT
+    m_ROOT_available = True
+except ImportError:
+    m_ROOT_available = False
+
 
 
 
@@ -183,16 +190,26 @@ class Plotter(object):
         hist = PlotterData()
         hist.name = name
 
-        self.setParameters(hist,**kwargs)
+        self.setParameters(hist,**kwargs)     # set parameters based on kwargs
+
+        isHistogram  = False
+        isEfficiency = False
+        if m_ROOT_available:
+            isHistogram  = isinstance(data,ROOT.TH1)
+            isEfficiency = isinstance(data,ROOT.TEfficiency)
+        else:
+            isHistogram  = ('TH1' in data._classname) or ('TH2' in data._classname)
+            # TEfficiency currently unsupported in uproot '3.2.5' and uproot-methods '0.2.5'
+            # - throws NotImplementedError (/.../uproot/rootio.py", line 645)
 
         # convert data for internal use (uniform I/O)
-        if isinstance(data,ROOT.TH1):
+        if isHistogram:
             if not kwargs.get("isTH1"): hist.isTH1 = True   # plot TH1/TH2
             if self.dimensions==1:
                 h_data = tools.hist2list(data,name=name,reBin=self.rebin,normed=hist.normed)
             else:
                 h_data = tools.hist2list2D(data,name=name,reBin=self.rebin,normed=hist.normed)
-        elif isinstance(data,ROOT.TEfficiency):
+        elif isEfficiency:
             if not kwargs.get("isTEff"): hist.isTEff = True # plot TEfficiency
             h_data = tools.TEfficiency2list(data)
         else:
@@ -201,7 +218,7 @@ class Plotter(object):
                 h_data = tools.data2list(data,weights=weights,normed=hist.normed,binning=self.binning)
             else:
                 h_data = tools.data2list2D(data,weights=weights,normed=hist.normed,binning=self.binning)
-        ## FUTURE:
+        ## .:FUTURE:.
         ## Add support for data that doesn't need to be put into a histogram (line data)
 
         hist.data = h_data

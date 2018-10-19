@@ -20,6 +20,7 @@ Base class for turning histograms or efficiency curves into plots
 """
 import os
 import sys
+import importlib
 from collections import OrderedDict
 
 import numpy as np
@@ -36,13 +37,6 @@ from matplotlib.ticker import FormatStrFormatter,LogFormatterSciNotation
 
 import tools
 import labels
-
-m_ROOT_available = False
-try:
-    import ROOT
-    m_ROOT_available = True
-except ImportError:
-    m_ROOT_available = False
 
 
 
@@ -64,7 +58,7 @@ class PlotterData(object):
         self.markerfacecolor = 'k'
         self.markersize = 6
         self.label  = ''
-        self.data   = tools.Data() # Data() object (tools.py)
+        self.data   = None         # should be Hist() object from hist.py
         self.normed = False
         self.weight = None
         self.draw_type   = 'step'  # 'step','stepfilled','errorbar' (others?)
@@ -113,6 +107,8 @@ class Plotter(object):
         self.saveAs = "result"               # save figure with name
         self.logplot = {"y":False,"x":False,"data":False}  # plot axes or data (2D) on log scale
 
+        self.data_io = None
+        self.backend = 'ROOT' if (os.environ.get('ROOTSYS') is not None)
         self.format_minor_ticklabels = False
         self.text_coords = {'top left': {'x':[0.03]*3,        'y':[0.96,0.89,0.82]},\
                             'top right':{'x':[0.97]*3,        'y':[0.96,0.89,0.82]},\
@@ -136,6 +132,11 @@ class Plotter(object):
         if not self.axis_scale:
             self.axis_scale = {'y':1.4,'x':-1}
             if self.dimensions==2: self.axis_scale['y'] = 1.0
+
+        if self.backend == 'ROOT':
+            self.data_io = importlib.import_module('io_root')
+        else:
+            self.data_io = importlib.import_module('io_uproot')
 
         return
 
@@ -191,40 +192,12 @@ class Plotter(object):
 
         self.setParameters(hist,**kwargs)     # set parameters based on kwargs
 
-        isHistogram  = False
-        isEfficiency = False
-        if m_ROOT_available:
-            isHistogram  = isinstance(data,ROOT.TH1)
-            isEfficiency = isinstance(data,ROOT.TEfficiency)
-        else:
-            isHistogram  = ('TH1' in data._classname) or ('TH2' in data._classname)
-            # TEfficiency currently unsupported in uproot '3.2.5' and uproot-methods '0.2.5'
-            # - throws NotImplementedError (/.../uproot/rootio.py", line 645)
+        io        = self.data_io()
+        hist.data = io.convert(data)
 
+        if io.isTH1() and not kwargs.get("isTH1",False):     hist.isTH1  = True
+        elif io.isTEff() and not kwargs.get("isTEff",False): hist.isTEff = True
 
-        # convert data for internal use (uniform I/O)
-        if isHistogram:
-            if not kwargs.get("isTH1"): hist.isTH1 = True   # plot TH1/TH2
-            if self.dimensions==1:
-                h_data = tools.hist2data(data,reBin=self.rebin,normed=hist.normed)
-            else:
-                h_data = tools.hist2data2D(data,reBin=self.rebin,normed=hist.normed)
-        elif isEfficiency:
-            if not kwargs.get("isTEff"): hist.isTEff = True # plot TEfficiency
-            if self.dimensions==1:
-                h_data = tools.TEfficiency2data(data)
-            else:
-                h_data = tools.TEfficiency2data2D(data)
-        else:
-            # others, e.g., numpy data (may or may not need to be put into a histogram)
-            if self.dimensions==1:
-                h_data = tools.array2data(data,weights=weights,normed=hist.normed,binning=self.binning,reBin=self.rebin)
-            else:
-                h_data = tools.array2data2D(data,weights=weights,normed=hist.normed,binning=self.binning,reBin=self.rebin)
-        ## .:FUTURE:.
-        ## Add support for data that doesn't need to be put into a histogram (line data)
-
-        hist.data = h_data
         self.data2plot[name] = hist   # store in this in a dictionary
 
         return

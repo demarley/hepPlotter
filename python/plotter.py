@@ -95,7 +95,7 @@ class Plotter(object):
         self.stacked    = False       # stack plots (1D only)
         self.normed     = False       # globally set histograms to be normalized
         self.binning    = 20          # integer for number of bins, or list for non-uniform bins
-        self.rebin      = 1           # rebin root histograms
+        self.rebin      = None        # rebin root histograms
         self.label_size = 20          # text labels on plot
         self.underflow  = False       # plot the underflow
         self.overflow   = False       # plot the overflow
@@ -128,7 +128,7 @@ class Plotter(object):
         self.ax2    = None
         self.kwargs = {}
 
-        self.data2plot = OrderedDict()    # {'name',HepPlotterData()}
+        self.data2plot = OrderedDict()
 
         if self.format!='pdf': 
             print " WARNING : Chosen format '{0}' may conflict with backend".format(self.format)
@@ -187,8 +187,7 @@ class Plotter(object):
                    -- errorbar: https://matplotlib.org/api/_as_gen/matplotlib.pyplot.errorbar.html
                    -- lineplot: https://matplotlib.org/api/_as_gen/matplotlib.pyplot.plot.html
         """
-        hist = PlotterData()
-        hist.name = name
+        hist = PlotterData(name)
 
         self.setParameters(hist,**kwargs)     # set parameters based on kwargs
 
@@ -202,22 +201,26 @@ class Plotter(object):
             # TEfficiency currently unsupported in uproot '3.2.5' and uproot-methods '0.2.5'
             # - throws NotImplementedError (/.../uproot/rootio.py", line 645)
 
+
         # convert data for internal use (uniform I/O)
         if isHistogram:
             if not kwargs.get("isTH1"): hist.isTH1 = True   # plot TH1/TH2
             if self.dimensions==1:
-                h_data = tools.hist2list(data,name=name,reBin=self.rebin,normed=hist.normed)
+                h_data = tools.hist2data(data,reBin=self.rebin,normed=hist.normed)
             else:
-                h_data = tools.hist2list2D(data,name=name,reBin=self.rebin,normed=hist.normed)
+                h_data = tools.hist2data2D(data,reBin=self.rebin,normed=hist.normed)
         elif isEfficiency:
             if not kwargs.get("isTEff"): hist.isTEff = True # plot TEfficiency
-            h_data = tools.TEfficiency2list(data)
+            if self.dimensions==1:
+                h_data = tools.TEfficiency2data(data)
+            else:
+                h_data = tools.TEfficiency2data2D(data)
         else:
             # others, e.g., numpy data (may or may not need to be put into a histogram)
             if self.dimensions==1:
-                h_data = tools.data2list(data,weights=weights,normed=hist.normed,binning=self.binning)
+                h_data = tools.array2data(data,weights=weights,normed=hist.normed,binning=self.binning,reBin=self.rebin)
             else:
-                h_data = tools.data2list2D(data,weights=weights,normed=hist.normed,binning=self.binning)
+                h_data = tools.array2data2D(data,weights=weights,normed=hist.normed,binning=self.binning,reBin=self.rebin)
         ## .:FUTURE:.
         ## Add support for data that doesn't need to be put into a histogram (line data)
 

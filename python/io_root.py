@@ -12,29 +12,29 @@ import ROOT
 
 
 
-def hist2list(histo,name,normed,reBin,results):
+def hist2data(histo,normed,reBin,results):
     """Convert ROOT histogram for internal use."""
+    if not histo.GetSumw2N():
+        histo.Sumw2()
+
+    if reBin is not None:
+        # Use ROOT functionality to re-bin histogram
+        try:
+            histo.Rebin(reBin)
+        except TypeError:
+            newname = histo.GetName()+"_"+name
+            histo.Rebin(len(reBin)-1,newname,reBin)
+            histo = ROOT.gROOT.FindObject( newname )
+
+    if normed:
+        integral = histo.Integral()
+        histo.Scale(1./integral)
+
     bin_centers  = []
     bin_contents = []
     bin_errors   = []
     bin_widths   = []
-    bin_edges    = []
-
-    if not histo.GetSumw2N():
-        histo.Sumw2()
-
-    if normed:
-        integral = histo.Integral()
-        histo.Scale(1./integral);
-
-    try:
-        histo.Rebin(reBin)
-    except TypeError:
-        newname = histo.GetName()+"_"+name
-        histo.Rebin(len(reBin)-1,newname,reBin)
-        histo = ROOT.gROOT.FindObject( newname )
-
-    bin_edges = [histo.GetXaxis().GetBinLowEdge(1)]
+    bin_edges    = [histo.GetXaxis().GetBinLowEdge(1)]
 
     for i in xrange(1,histo.GetNbinsX()+1):
         bin_edges.append(histo.GetXaxis().GetBinUpEdge(i))
@@ -53,23 +53,13 @@ def hist2list(histo,name,normed,reBin,results):
 
 
 
-def hist2list2D(histo,name,reBin,normed,results):
+def hist2data2D(histo,reBin,normed,results):
     """Convert ROOT histogram for internal use."""
-    bin_centers  = {'x':[],'y':[]}
-    bin_contents = []
-    bin_errors   = []
-    bin_widths   = {'x':[],'y':[]}
-    bin_edges    = {'x':[],'y':[]}
-
     if not histo.GetSumw2N():
         histo.Sumw2()
 
-    if normed:
-        integral = histo.Integral()
-        histo.Scale(1./integral)
-
-    ## -- Rebin
     if reBin is not None:
+        # Use ROOT functionality to re-bin histogram
         try:
             histo.Rebin2D(reBin,reBin)
         except TypeError:
@@ -90,8 +80,16 @@ def hist2list2D(histo,name,reBin,normed,results):
                 for j in xrange(1,yaxis.GetNbins()):
                     histo.Fill(xaxis.GetBinCenter(i),yaxis.GetBinCenter(j),old_histo.GetBinContent(i,j) )
 
-    bin_edges = {'x':[histo.GetXaxis().GetBinLowEdge(1)],\
-                 'y':[histo.GetYaxis().GetBinLowEdge(1)]}
+    if normed:
+        integral = histo.Integral()
+        histo.Scale(1./integral)
+
+    bin_centers  = {'x':[],'y':[]}
+    bin_contents = []
+    bin_errors   = []
+    bin_widths   = {'x':[],'y':[]}
+    bin_edges    = {'x':[histo.GetXaxis().GetBinLowEdge(1)],\
+                    'y':[histo.GetYaxis().GetBinLowEdge(1)]}
     bin_edges['x']+=[histo.GetXaxis().GetBinUpEdge(i) for i in xrange(1,histo.GetNbinsX()+1)]
     bin_edges['y']+=[histo.GetYaxis().GetBinUpEdge(j) for j in xrange(1,histo.GetNbinsY()+1)]
 

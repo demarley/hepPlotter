@@ -108,7 +108,7 @@ class Plotter(object):
         self.logplot = {"y":False,"x":False,"data":False}  # plot axes or data (2D) on log scale
 
         self.data_io = None
-        self.backend = 'ROOT' if (os.environ.get('ROOTSYS') is not None)
+        self.backend = None  # 'ROOT' or 'uproot'
         self.format_minor_ticklabels = False
         self.text_coords = {'top left': {'x':[0.03]*3,        'y':[0.96,0.89,0.82]},\
                             'top right':{'x':[0.97]*3,        'y':[0.96,0.89,0.82]},\
@@ -133,12 +133,39 @@ class Plotter(object):
             self.axis_scale = {'y':1.4,'x':-1}
             if self.dimensions==2: self.axis_scale['y'] = 1.0
 
+        ## Load the backend
+        #  only support two 'backends' right now: "ROOT" and "uproot"
         if self.backend == 'ROOT':
-            self.data_io = importlib.import_module('io_root')
+            self.data_io = self.load_backend('rootIO','RootIO')
+        elif self.backend == 'uproot':
+            self.data_io = self.load_backend('uprootIO','UprootIO')
+            # methods for creating histograms from arrays are built into the uproot
+            # module because the structure is similar (both numpy-based)
         else:
-            self.data_io = importlib.import_module('io_uproot')
-
+            print " ERROR : Unknown backend '{0}' chosen.".format(self.backend)
+            print "       : Please set the backend to either 'ROOT' or 'uproot'."
+            rootsys = os.environ.get("ROOTSYS")
+            if rootsys is not None:
+                print " INFO  : Although, c++ ROOT seems to be available: "
+                print "       : > {0}".format(rootsys)
+                print " INFO  : Continuing with 'ROOT' as the backend."
+                print " INFO  : To avoid this message, please set the backend explicitly."
+                self.backend = 'ROOT'
+                self.data_io = self.load_backend('rootIO','RootIO')
+            else:
+                try:
+                    import uproot
+                except ImportError:
+                    print " ERROR : Cannot find 'ROOT' or 'uproot'. Exiting."
+                    sys.exit(1)
+                self.backend = 'uproot'
+                self.data_io = self.load_backend('uprootIO','UprootIO')
         return
+
+
+    def load_backend(self,module,klassname):
+        """Load the backend to access ROOT data"""
+        return getattr(importlib.import_module(module),klassname)
 
 
 
@@ -192,7 +219,12 @@ class Plotter(object):
 
         self.setParameters(hist,**kwargs)     # set parameters based on kwargs
 
-        io        = self.data_io()
+        io_kwargs = {"dimensions":self.dimensions,
+                     "rebin":self.rebin,
+                     "normed":hist.normed,
+                     "binning":self.binning,
+                     "weights":weights}
+        io        = self.data_io(**io_kwargs)
         hist.data = io.convert(data)
 
         if io.isTH1() and not kwargs.get("isTH1",False):     hist.isTH1  = True

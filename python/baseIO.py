@@ -9,7 +9,6 @@ daniel.edison.marley@cernSPAMNOT.ch
 Simple class for interfacing with different input data types
 """
 
-
 class BaseIO(object):
     def __init__(self,**kwargs):
         """Store data for plotting (collection of arrays) in a class"""

@@ -9,6 +9,22 @@ Texas A&M University
 
 Simple functions to help with plotting & accessing data
 """
+import numpy as np
+
+
+def midpoints(data):
+    """Return the midpoint of bins given the bin edges"""
+    return 0.5*(data[:-1]+data[1:])
+
+def widths(data):
+    """Return half the width of bins given the bin edges"""
+    return 0.5*(data[1:]-data[:-1])
+
+def dummy_bins2D(x_bins,y_bins):
+    """Convert two lists of values, e.g., bin midpoints, into array of values"""
+    xbins  = x_bins.repeat(len(y_bins))
+    ybins  = np.tile(y_bins, (1,len(x_bins)))[0]
+    return xbins,ybins
 
 def extract(str_value, start_='{', stop_='}'):
     """Extract a string between two symbols, e.g., parentheses."""

@@ -9,7 +9,7 @@ daniel.edison.marley@cernSPAMNOT.ch
 Simple class for storing data internally to HEP Plotter as histogram-like object
 """
 import numpy as np
-
+import tools
 
 _scipy_available = False  # for re-binning 2D histograms
 
@@ -38,18 +38,59 @@ class Hist(object):
         self.xwidth  = None
         self.ywidth  = None
 
-    def midpoints(self,data):
-        """Return the midpoint of bins given the bin edges"""
-        return 0.5*(data[:-1]+data[1:])
+    def normalize(self):
+        integral = np.sum(self.content)
+        self.content = np.divide(self.content,integral,dtype=np.float32)
+        self.error   = np.divide(self.error,  integral,dtype=np.float32)
+        return
 
-    def widths(self,data):
-        """Return half the width of bins given the bin edges"""
-        return 0.5*(data[1:]-data[:-1])
+    def sumw2_1D(self,xdata,values=None,binning=None):
+        """Calculate the sum of weights squared using numpy.digitize"""
+        if values is None:  values  = self.error
+        if binning is None: binning = self.bins
 
-    def Rebin(self):
+        # find the new bin location of original values
+        bin_index   = np.digitize(xdata,binning)
+
+        # find in which bin the values now exist
+        bin_weights = np.asarray([values[np.where(bin_index==idx)[0]] for idx in range(1,len(binning))])
+        bin_weights_sqr = np.square(bin_weights)
+        bin_weights_sum = [ np.sum(i) for i in bin_weights_sqr ] # in case the array has variable length elements
+
+        return np.sqrt( bin_weights_sum )
+
+
+    def sumw2_2D(self,xdata=None,ydata=None,values=None,binning=None):
+        """Calculate the sum of weights squared for 2D array using scipy.stats"""
+        if values is None:  values  = self.error
+        if binning is None: binning = [self.bins['x'],self.bins['y']]
+
+        # find the new bin location of original values
+        s,bx,by,bin_index = scipy.stats.binned_statistic_2d(xdata,ydata,xdata,bins=binning)
+
+        # convert scipy bin_index to bin_index of given array (scipy includes over/underflow)
+        nxbins = len(binning[0])-1
+        nybins = len(binning[1])-1
+        xbins_unravel = nxbins+2
+        ybins_unravel = nybins+2
+        unrv_bc = np.unravel_index(bin_index,[xbins_unravel,ybins_unravel])
+        bin_idx = np.array(unrv_bc).T-1      # convert unrv_bc from tuple to 2D array
+
+        # combine weights in quadrature into array
+        fbin_errors = values.flatten()
+        bin_weights = np.zeros(nxbins*nybins).reshape(nxbins,nybins) # same shape as hist
+        for ix in range(nxbins):
+            for iy in range(nybins):
+                matches = [ib==[ix,iy] for ib in bin_idx.tolist()]
+                bin_weights[ix][iy] = np.sqrt( np.sum( np.square(fbin_errors[matches])))
+
+        return bin_weights
+
+
+    def Rebin(self,reBin):
         if isinstance(reBin, (int,long)):
             # merge bins together by some integer factor 'reBin'
-            if reBin<=0 or self.bin_contents.size%reBin:
+            if reBin<=0 or self.content.size%reBin:
                 print " WARNING : Cannot re-bin with {0}".format(reBin)
                 print "         : Not re-binning the histogram"
                 return
@@ -61,34 +102,27 @@ class Hist(object):
             return
 
         # re-bin the histogram (by making a new histogram)
-        bin_contents,bin_edges = np.histogram(bin_centers,bins=reBin,weights=bin_contents,normed=normed)
-        nbin_edges = len(bin_edges)
-
-        # re-bin errors
-        bin_index   = np.digitize(bin_centers, bin_edges)  # find where original values migrated in new binning
-        bin_weights = np.asarray([bin_errors[np.where(bin_index==idx)[0]] for idx in range(1,nbin_edges)])
-        bin_weights_sqr = np.square(bin_weights)
-        bin_weights_sum = [ np.sum(i) for i in bin_weights_sqr ] # in case the array has variable length elements
-        bin_errors      = np.sqrt( bin_weights_sum )
+        bin_contents,bin_edges = np.histogram(self.center,bins=reBin,weights=self.content)
 
         self.content = bin_contents
-        self.error   = bin_errors
         self.bins    = bin_edges
-        self.center  = self.midpoints(bin_edges)
-        self.width   = self.widths(bin_edges)
+        self.center  = tools.midpoints(bin_edges)
+        self.width   = tools.widths(bin_edges)
+        self.error   = self.sumw2_1D(xdata=self.center)  # use data for re-binning, not bin content
 
         return
 
 
     def Rebin2D(self,reBin):
         """Re-bin 2D histogram"""
-        xrebin = xbin_edges.copy()         # default to original binning
-        yrebin = ybin_edges.copy()         # default to original binning
-
         xbins  = self.bins['x']
         ybins  = self.bins['y']
         nbinsx = len(xbins)-1
         nbinsy = len(ybins)-1
+
+        xrebin = xbins.copy()         # default to original binning
+        yrebin = ybins.copy()         # default to original binning
+
         if isinstance(reBin, (int,long)):
             # new bins should be merged bin edges
             if reBin<=0 or nbinsx%reBin or nbinsy%reBin:
@@ -114,40 +148,22 @@ class Hist(object):
                 return
 
         # - generate dummy values of the bin centers and pass data as weights
-        ymbins = self.midpoints(xbins)
-        xmbins = self.midpoints(ybins)
-        xbins  = xmbins.repeat(len(ymbins))
-        ybins  = np.tile(ymbins, (1,len(xmbins)))[0]
-
-        rb_hist2d = np.histogram2d(xbins,ybins,bins=[xrebin,yrebin],normed=normed,\
-                                   weights=bin_contents.flatten())
+        xbins,ybins = tools.dummy_bins2D(tools.midpoints(xbins),tools.midpoints(ybins))
+        rb_hist2d   = np.histogram2d(xbins,ybins,bins=[xrebin,yrebin],weights=self.content.tolist())
         bin_contents,xbin_edges,ybin_edges = rb_hist2d
 
-        xbins_unravel = nbinsx+2
-        ybins_unravel = nbinsy+2
+        self.content = bin_contents.flatten()
+        self.bins    = {'x':xbin_edges,'y':ybin_edges}
+
+        xbin_center,ybin_center = tools.dummy_bins2D(tools.midpoints(xbin_edges),tools.midpoints(ybin_edges))
+        xbin_width,ybin_width   = tools.dummy_bins2D(tools.widths(xbin_edges),tools.widths(ybin_edges))
+        self.center  = {'x':xbin_center,'y':ybin_center}
+        self.width   = {'x':xbin_width, 'y':ybin_width}
+
         if _scipy_available:
-            # rebin the histogram to see where the old bins get merged into new bins
-            s,bx,by,bin_index = scipy.stats.binned_statistic_2d(xbins,ybins,xbins,bins=[xrebin,yrebin])
-            # convert scipy bin_index to bin_index of given array (scipy includes over/underflow)
-            unrv_bc = np.unravel_index(bin_index,[xbins_unravel,ybins_unravel])
-            bin_idx = np.array(unrv_bc).T-1      # convert unrv_bc from tuple to 2D array
-
-            # combine weights in quadrature into array
-            fbin_errors = bin_errors.flatten()
-            bin_weights = np.zeros(nxbins*nybins).reshape(nxbins,nybins) # same shape as hist
-            for ix in range(nxbins):
-                for iy in range(nybins):
-                    matches = [ib==[ix,iy] for ib in bin_idx.tolist()]
-                    bin_weights[ix][iy] = np.sqrt( np.sum( np.square(fbin_errors[matches])))
-            bin_errors = bin_weights.copy()
+            self.error = self.sumw2_2D(xdata=xbins,ydata=ybins)
         else:
-            bin_errors = np.sqrt(bin_contents)
-
-        self.content = bin_contents
-        self.error   = bin_errors
-        self.bins    = bin_edges
-        self.center  = self.midpoints(bin_edges)
-        self.width   = self.widths(bin_edges)
+            self.error = np.sqrt(bin_contents.flatten())
 
         return
 

@@ -50,13 +50,15 @@ Notebook | ABOUT
 
 ## Backend
 
-The framework now supports using C++ ROOT or uproot as backends.
+The framework now supports using `c++ ROOT` or `uproot` as backends.
 This means that, for a given ROOT file with histograms, you can choose a backend
-or either 'ROOT' or 'uproot' to load your histograms.
+of either `ROOT` or `uproot` to open & manipulate your histograms.
 This is particularly useful in virtual environments (and other python-focused settings)
-where C++ ROOT isn't available.  
+where `c++ ROOT` isn't available.  
 To set your backend, simply set the option `backend = 'uproot'` or `backend = 'ROOT'`
 when making your histograms (see the notebooks in `examples/` for more information.
+
+_If you are using raw data or arrays, use the `uproot` backend._
 
 # Questions or Comments
 

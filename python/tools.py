@@ -1,28 +1,35 @@
 """
 Created:         1 September 2016
-Last Updated:   12 September 2018
+Last Updated:   19 October   2018
 
 Dan Marley
 daniel.edison.marley@cernSPAMNOT.ch
 Texas A&M University
 -----
 
-Simple functions to help with plotting
+Simple functions to help with plotting & accessing data
 """
-import ROOT
 import numpy as np
-from array import array
-
-def extract(str_value, start_='{', stop_='}'):
-    """Extract a string between two symbols, e.g., parentheses."""
-    extraction = str_value[str_value.index(start_)+1:str_value.index(stop_)]
-
-    return extraction
 
 
 def midpoints(data):
     """Return the midpoint of bins given the bin edges"""
     return 0.5*(data[:-1]+data[1:])
+
+def widths(data):
+    """Return half the width of bins given the bin edges"""
+    return 0.5*(data[1:]-data[:-1])
+
+def dummy_bins2D(x_bins,y_bins):
+    """Convert two lists of values, e.g., bin midpoints, into array of values"""
+    xbins  = x_bins.repeat(len(y_bins))
+    ybins  = np.tile(y_bins, (1,len(x_bins)))[0]
+    return xbins,ybins
+
+def extract(str_value, start_='{', stop_='}'):
+    """Extract a string between two symbols, e.g., parentheses."""
+    extraction = str_value[str_value.index(start_)+1:str_value.index(stop_)]
+    return extraction
 
 
 def getDataStructure(h_data):
@@ -47,225 +54,6 @@ def getDataStructure(h_data):
         colormap = "bwr"         # blue2red map
 
     return colormap
-
-
-
-class Data(object):
-    def __init__(self):
-        """Store data for plotting (collection of arrays) in a class"""
-        self.content = None
-        self.error   = None
-        self.bins    = None
-        self.center  = None
-        self.width   = None
-
-
-def data2list(data,weights=None,normed=False,binning=1):
-    """Convert array of data into dictionary of information matching 'hist2list' """
-    data,bins = np.histogram(data,bins=binning,weights=weights,normed=normed)
-
-    results = Data()
-    results.content = data
-    results.error   = np.sqrt(data)
-    results.bins    = bins
-    results.center  = 0.5*(bins[:-1]+bins[1:])
-    results.width   = 0.5*(bins[:-1]-bins[1:])
-
-    return results
-
-
-def data2list2D(data,weights=None,normed=False,binning=1):
-    """Convert array of data into dictionary of information matching 'hist2list' """
-    try:
-        x = data['x']
-        y = data['y']
-    except TypeError:
-        x = data[0]
-        y = data[1]
-
-    data,bins_x,bins_y = np.histogram2d(x,y,bins=binning,normed=normed,weights=weights)
-
-
-    # create dummy binning
-    mbins_x = midpoints(bins_x)  # get midpoints of bins given the bin edges
-    mbins_y = midpoints(bins_y)
-    xbins = mbins_x.repeat(len(mbins_y))
-    ybins = np.tile(mbins_y, (1,len(mbins_x)) )[0]
-
-    results = Data()
-    results.content = data.flatten()   # data is a ndarray (nxbins,nybins)
-    results.error   = np.sqrt(data)
-    results.bins    = {'x':np.array(bins_x),'y':np.array(bins_y)}
-    results.center  = {'x':xbins,'y':ybins}
-    results.width   = {'x':0.5*(bins_x[:-1]-bins_x[1:]),
-                       'y':0.5*(bins_y[:-1]-bins_y[1:])}
-
-    return results
-
-
-def hist2list(histo,name='',normed=False,reBin=1):
-    """Convert ROOT histogram to (dictionary of) lists"""
-    if not histo.GetSumw2N():
-        histo.Sumw2()
-
-    if normed:
-        integral = histo.Integral()
-        histo.Scale(1./integral);
-
-    try:
-        histo.Rebin(reBin)
-    except TypeError:
-        newname = histo.GetName()+"_"+name
-        histo.Rebin(len(reBin)-1,newname,reBin)
-        histo = ROOT.gROOT.FindObject( newname )
-
-    bin_centers  = []
-    bin_contents = []
-    bin_errors   = []
-    bin_widths   = []
-    bin_edges    = [histo.GetXaxis().GetBinLowEdge(1)]
-
-    for i in xrange(1,histo.GetNbinsX()+1):
-        bin_edges.append(histo.GetXaxis().GetBinUpEdge(i))
-        bin_centers.append(histo.GetBinCenter(i))
-        bin_contents.append(histo.GetBinContent(i))
-        bin_errors.append(histo.GetBinError(i))
-        bin_widths.append(histo.GetXaxis().GetBinWidth(i)/2.)
-
-    results = Data()
-    results.content = np.array(bin_contents)
-    results.error   = np.array(bin_errors)
-    results.bins    = np.array(bin_edges)
-    results.center  = bin_centers
-    results.width   = bin_widths
-
-    return results
-
-
-
-def hist2list2D(histo,name='',reBin=None,normed=False):
-    """Convert ROOT histogram to list for 2D plots."""
-    if not histo.GetSumw2N():
-        histo.Sumw2()
-
-    if normed:
-        integral = histo.Integral()
-        histo.Scale(1./integral)
-
-    ## -- Rebin
-    if reBin is not None:
-        try:
-            histo.Rebin2D(reBin,reBin)
-        except TypeError:
-            newname = histo.GetName()+"_"+name
-
-            old_histo = histo.Clone()     # special rebinning, redefine histo
-            new_x     = reBin['x']
-            new_y     = reBin['y']
-            histo     = ROOT.TH2F(old_histo.GetName()+newname,old_histo.GetTitle()+newname,len(new_x)-1,new_x,len(new_y)-1,new_y)
-            xaxis = old_histo.GetXaxis()
-            yaxis = old_histo.GetYaxis()
-            for i in xrange(1,xaxis.GetNbins()):
-                for j in xrange(1,yaxis.GetNbins()):
-                    histo.Fill(xaxis.GetBinCenter(i),yaxis.GetBinCenter(j),old_histo.GetBinContent(i,j) )
-
-    bin_centers  = {'x':[],'y':[]}
-    bin_contents = []
-    bin_errors   = []
-    bin_widths   = {'x':[],'y':[]}
-    bin_edges = {'x':[histo.GetXaxis().GetBinLowEdge(1)],\
-                 'y':[histo.GetYaxis().GetBinLowEdge(1)]}
-
-    bin_edges['x']+=[histo.GetXaxis().GetBinUpEdge(i) for i in xrange(1,histo.GetNbinsX()+1)]
-    bin_edges['y']+=[histo.GetYaxis().GetBinUpEdge(j) for j in xrange(1,histo.GetNbinsY()+1)]
-
-    for i in xrange(1,histo.GetNbinsX()+1):
-        for j in xrange(1,histo.GetNbinsY()+1):
-            bin_centers['x'].append(histo.GetXaxis().GetBinCenter(i))
-            bin_centers['y'].append(histo.GetYaxis().GetBinCenter(j))
-
-            bin_contents.append(histo.GetBinContent(i,j))
-            bin_errors.append(histo.GetBinError(i,j))
-
-            bin_widths['x'].append(histo.GetXaxis().GetBinWidth(i)/2.)
-            bin_widths['y'].append(histo.GetYaxis().GetBinWidth(i)/2.)
-
-    results = Data()
-    results.content = np.array(bin_contents)
-    results.error   = np.array(bin_errors)
-    results.bins    = {'x':np.array(bin_edges['x']), 'y':np.array(bin_edges['y']) }
-    results.center  = bin_centers
-    results.width   = bin_widths
-
-    return results
-
-
-
-def TEfficiency2list(histo):
-    """Convert TEfficiency to lists.  Return dictionary of lists"""
-    h_histo  = histo.GetPassedHistogram()
-
-    bin_contents  = []
-    bin_errors_up = []
-    bin_errors_dn = []
-    bin_centers   = []
-    bin_widths    = []
-    bin_edges     = [h_histo.GetXaxis().GetBinLowEdge(1)]
-
-    for i in xrange(1,h_histo.GetNbinsX()+1):
-        bin_contents.append(histo.GetEfficiency(i))
-        bin_errors_up.append(histo.GetEfficiencyErrorUp(i))
-        bin_errors_dn.append(histo.GetEfficiencyErrorLow(i))
-        bin_centers.append(h_histo.GetXaxis().GetBinCenter(i))
-        bin_edges.append(h_histo.GetXaxis().GetBinUpEdge(i))
-        bin_widths.append(h_histo.GetXaxis().GetBinWidth(1)/2.)
-
-    results = Data()
-    results.content = np.array(bin_contents)
-    results.error   = [bin_errors_dn,bin_errors_up]
-    results.bins    = np.array(bin_edges)
-    results.center  = bin_centers
-    results.width   = bin_widths
-
-    return results
-
-
-
-def TEfficiency2list2D(histo):
-    """Convert 2D TEfficiency to lists"""
-    h_histo  = histo.GetPassedHistogram()
-
-    bin_centers   = {'x':[],'y':[]}
-    bin_contents  = []
-    bin_error_ups = [] # eff uncertainty up
-    bin_error_dns = [] # eff uncertainty down
-    bin_widths    = {'x':[],'y':[]}
-
-    binns = {'x':[h_histo.GetXaxis().GetBinLowEdge(1)],\
-             'y':[h_histo.GetYaxis().GetBinLowEdge(1)]}
-    bin_edges['x']+=[h_histo.GetXaxis().GetBinUpEdge(i) for i in xrange(1,h_histo.GetNbinsX()+1)]
-    bin_edges['y']+=[h_histo.GetYaxis().GetBinUpEdge(j) for j in xrange(1,h_histo.GetNbinsY()+1)]
-
-    for i in xrange(1,h_histo.GetNbinsX()+1):
-        for j in xrange(1,h_histo.GetNbinsY()+1):
-            bin_center['x'].append(h_histo.GetXaxis().GetBinCenter(i))
-            bin_center['y'].append(h_histo.GetYaxis().GetBinCenter(j))
-
-            this_bin = histo.GetGlobalBin(i,j)
-            bin_contents.append(histo.GetEfficiency(this_bin))
-            bin_error_ups.append(histo.GetEfficiencyErrorUp(this_bin))
-            bin_error_dns.append(histo.GetEfficiencyErrorLow(this_bin))
-            bin_widths['x'].append(h_histo.GetXaxis().GetBinWidth(1)/2.)
-            bin_widths['y'].append(h_histo.GetYaxis().GetBinWidth(1)/2.)
-
-    results = Data()
-    results.content = np.array(bin_contents)
-    results.error   = [np.array(bin_error_dns),np.array(bin_error_ups)]
-    results.bins    = {'x':np.array(bin_edges['x']),'y':np.array(bin_edges['y'])}
-    results.center  = bin_centers
-    results.width   = bin_widths
-
-    return results
 
 
 
@@ -307,5 +95,6 @@ def betterColors():
     ls += ['dashed' for _ in lc]
 
     return {'linecolors':lc,'linestyles':ls}
+
 
 ## THE END

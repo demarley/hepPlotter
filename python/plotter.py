@@ -20,7 +20,7 @@ Base class for turning histograms or efficiency curves into plots
 """
 import os
 import sys
-import ROOT
+import importlib
 from collections import OrderedDict
 
 import numpy as np
@@ -37,6 +37,7 @@ from matplotlib.ticker import FormatStrFormatter,LogFormatterSciNotation
 
 import tools
 import labels
+
 
 
 
@@ -57,7 +58,7 @@ class PlotterData(object):
         self.markerfacecolor = 'k'
         self.markersize = 6
         self.label  = ''
-        self.data   = tools.Data() # Data() object (tools.py)
+        self.data   = None         # should be Hist() object from hist.py
         self.normed = False
         self.weight = None
         self.draw_type   = 'step'  # 'step','stepfilled','errorbar' (others?)
@@ -88,7 +89,7 @@ class Plotter(object):
         self.stacked    = False       # stack plots (1D only)
         self.normed     = False       # globally set histograms to be normalized
         self.binning    = 20          # integer for number of bins, or list for non-uniform bins
-        self.rebin      = 1           # rebin root histograms
+        self.rebin      = None        # rebin root histograms
         self.label_size = 20          # text labels on plot
         self.underflow  = False       # plot the underflow
         self.overflow   = False       # plot the overflow
@@ -106,6 +107,8 @@ class Plotter(object):
         self.saveAs = "result"               # save figure with name
         self.logplot = {"y":False,"x":False,"data":False}  # plot axes or data (2D) on log scale
 
+        self.data_io = None
+        self.backend = None  # 'ROOT' or 'uproot'
         self.format_minor_ticklabels = False
         self.text_coords = {'top left': {'x':[0.03]*3,        'y':[0.96,0.89,0.82]},\
                             'top right':{'x':[0.97]*3,        'y':[0.96,0.89,0.82]},\
@@ -121,7 +124,7 @@ class Plotter(object):
         self.ax2    = None
         self.kwargs = {}
 
-        self.data2plot = OrderedDict()    # {'name',HepPlotterData()}
+        self.data2plot = OrderedDict()
 
         if self.format!='pdf': 
             print " WARNING : Chosen format '{0}' may conflict with backend".format(self.format)
@@ -130,7 +133,39 @@ class Plotter(object):
             self.axis_scale = {'y':1.4,'x':-1}
             if self.dimensions==2: self.axis_scale['y'] = 1.0
 
+        ## Load the backend
+        #  only support two 'backends' right now: "ROOT" and "uproot"
+        if self.backend == 'ROOT':
+            self.data_io = self.load_backend('rootIO','RootIO')
+        elif self.backend == 'uproot':
+            self.data_io = self.load_backend('uprootIO','UprootIO')
+            # methods for creating histograms from arrays are built into the uproot
+            # module because the structure is similar (both numpy-based)
+        else:
+            print " ERROR : Unknown backend '{0}' chosen.".format(self.backend)
+            print "       : Please set the backend to either 'ROOT' or 'uproot'."
+            rootsys = os.environ.get("ROOTSYS")
+            if rootsys is not None:
+                print " INFO  : Although, c++ ROOT seems to be available: "
+                print "       : > {0}".format(rootsys)
+                print " INFO  : Continuing with 'ROOT' as the backend."
+                print " INFO  : To avoid this message, please set the backend explicitly."
+                self.backend = 'ROOT'
+                self.data_io = self.load_backend('rootIO','RootIO')
+            else:
+                try:
+                    import uproot
+                except ImportError:
+                    print " ERROR : Cannot find 'ROOT' or 'uproot'. Exiting."
+                    sys.exit(1)
+                self.backend = 'uproot'
+                self.data_io = self.load_backend('uprootIO','UprootIO')
         return
+
+
+    def load_backend(self,module,klassname):
+        """Load the backend to access ROOT data"""
+        return getattr(importlib.import_module(module),klassname)
 
 
 
@@ -180,31 +215,21 @@ class Plotter(object):
                    -- errorbar: https://matplotlib.org/api/_as_gen/matplotlib.pyplot.errorbar.html
                    -- lineplot: https://matplotlib.org/api/_as_gen/matplotlib.pyplot.plot.html
         """
-        hist = PlotterData()
-        hist.name = name
+        hist = PlotterData(name)
 
-        self.setParameters(hist,**kwargs)
+        self.setParameters(hist,**kwargs)     # set parameters based on kwargs
 
-        # convert data for internal use (uniform I/O)
-        if isinstance(data,ROOT.TH1):
-            if not kwargs.get("isTH1"): hist.isTH1 = True   # plot TH1/TH2
-            if self.dimensions==1:
-                h_data = tools.hist2list(data,name=name,reBin=self.rebin,normed=hist.normed)
-            else:
-                h_data = tools.hist2list2D(data,name=name,reBin=self.rebin,normed=hist.normed)
-        elif isinstance(data,ROOT.TEfficiency):
-            if not kwargs.get("isTEff"): hist.isTEff = True # plot TEfficiency
-            h_data = tools.TEfficiency2list(data)
-        else:
-            # others, e.g., numpy data (may or may not need to be put into a histogram)
-            if self.dimensions==1:
-                h_data = tools.data2list(data,weights=weights,normed=hist.normed,binning=self.binning)
-            else:
-                h_data = tools.data2list2D(data,weights=weights,normed=hist.normed,binning=self.binning)
-        ## FUTURE:
-        ## Add support for data that doesn't need to be put into a histogram (line data)
+        io_kwargs = {"dimensions":self.dimensions,
+                     "rebin":self.rebin,
+                     "normed":hist.normed,
+                     "binning":self.binning,
+                     "weights":weights}
+        io        = self.data_io(**io_kwargs)
+        hist.data = io.convert(data)
 
-        hist.data = h_data
+        if io.isTH1() and not kwargs.get("isTH1",False):     hist.isTH1  = True
+        elif io.isTEff() and not kwargs.get("isTEff",False): hist.isTEff = True
+
         self.data2plot[name] = hist   # store in this in a dictionary
 
         return

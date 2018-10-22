@@ -62,9 +62,9 @@ where `c++ ROOT` isn't available.
 To set your backend, simply set the option `backend = 'uproot'` or `backend = 'ROOT'`
 when making your histograms (see the notebooks in `examples/` for more information.
 
-**If no backend is declared, hepPlotter will first try to set the backend to c++ ROOT. 
+**If no backend is declared, hepPlotter will first try to set the backend to `c++ ROOT`. 
 If that is unavailable, hepPlotter will try to use `uproot` as the backend.**  
-You can see the `backend` defined 
+You can see how the `backend` is defined 
 [here](https://github.com/demarley/hepPlotter/blob/master/python/plotter.py#L136-L162).
 
 _If you are using raw data or binned data (stored in arrays), use the `uproot` backend._
@@ -74,9 +74,8 @@ _If you are using raw data or binned data (stored in arrays), use the `uproot` b
 ### Data/MC in 2 Dimensions
 
 Most commonly, data/mc plots are just for 1-dimensional distributions.
-You can plot 2-dimensional data/mc plots, but this is not natively supported in hepPlotter.  
-Instead, as a user you can pass a 2-dimensional histogram (representing data/mc) 
-to hepPlotter to capture the ratio.
+It is possible to plot 2-dimensional data/mc plots, but this is not natively supported in hepPlotter.  
+Instead, as a user you can pass a 2-dimensional histogram that represents the data/mc ratio to hepPlotter.
 
 Here is an example snippet of code:
 ```
@@ -99,7 +98,7 @@ hist.colorbar['title'] = "Data/MC"  # text label for colorbar
 hist.initialize()   # sets the parameters of the plot
 
 # Add data to the plot - just an example (not stored in example.root)
-total_mc_hist = file.Get("totalMC2D")  # access 2D MC data (may need to add multiple backgrounds together)
+total_mc_hist = file.Get("totalMC2D")  # access 2D MC data (may need to add multiple histograms)
 data_hist     = file.Get("data2D")     # access 2D data
 data_hist.Divide(total_mc_hist)        # get the ratio
 hist.Add(datamc,name="datamc")

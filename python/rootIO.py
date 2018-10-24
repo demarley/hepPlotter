@@ -25,15 +25,20 @@ class RootIO(BaseIO):
 
         h_data = Hist()
         if self._isHistogram:
+            # TH1/TH2
             if self.dimensions==1:
                 h_data = self.hist2data(data,reBin=self.rebin,normed=self.normed)
             else:
                 h_data = self.hist2data2D(data,reBin=self.rebin,normed=self.normed)
         elif self._isEfficiency:
+            # TEfficincy
             if self.dimensions==1:
                 h_data = self.TEfficiency2data(data)
             else:
                 h_data = self.TEfficiency2data2D(data)
+        else:
+            # assume the data is stored in an array
+            h_data = self.convert_array(data)
 
         return h_data
 
@@ -212,5 +217,6 @@ class RootIO(BaseIO):
         results.width   = bin_widths
 
         return results
+
 
 ## THE END ##

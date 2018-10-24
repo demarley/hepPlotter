@@ -67,8 +67,6 @@ If that is unavailable, hepPlotter will try to use `uproot` as the backend.**
 You can see how the `backend` is defined 
 [here](https://github.com/demarley/hepPlotter/blob/master/python/plotter.py#L136-L162).
 
-_If you are using raw data or binned data (stored in arrays), use the `uproot` backend._
-
 ## Notes
 
 ### Data/MC in 2 Dimensions

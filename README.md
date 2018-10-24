@@ -48,6 +48,7 @@ Notebook | ABOUT
 simple_1D_arrays.ipynb | Plots showing arrays turned into 1-dimensional histograms (created with `numpy`)
 simple_1D_root.ipynb   | Plots of ROOT histograms and efficiencies (accessed with `ROOT`)
 simple_1D_uproot.ipynb | Plots showing 1-dimensional histograms (accessed with `uproot`)
+simple_2D_arrays.ipynb | Plots showing 2-dimensional histograms (created/accessed with `numpy`)
 simple_2D_root.ipynb   | Plots showing 2-dimensional histograms (accessed with `ROOT`)
 simple_2D_uproot.ipynb | Plots showing 2-dimensional histograms (accessed with `uproot`)
 simple_datamc.ipynb    | Plots showing Data/MC comparisons (accessed with `ROOT`)

@@ -60,7 +60,7 @@ class Hist(object):
         return np.sqrt( bin_weights_sum )
 
 
-    def sumw2_2D(self,xdata=None,ydata=None,values=None,binning=None):
+    def sumw2_2D(self,xdata,ydata,values=None,binning=None):
         """Calculate the sum of weights squared for 2D array using scipy.stats"""
         if values is None:  values  = self.error
         if binning is None: binning = [self.bins['x'],self.bins['y']]
@@ -77,12 +77,12 @@ class Hist(object):
         bin_idx = np.array(unrv_bc).T-1      # convert unrv_bc from tuple to 2D array
 
         # combine weights in quadrature into array
-        fbin_errors = values.flatten()
+        fvalues     = values.flatten()
         bin_weights = np.zeros(nxbins*nybins).reshape(nxbins,nybins) # same shape as hist
         for ix in range(nxbins):
             for iy in range(nybins):
                 matches = [ib==[ix,iy] for ib in bin_idx.tolist()]
-                bin_weights[ix][iy] = np.sqrt( np.sum( np.square(fbin_errors[matches])))
+                bin_weights[ix][iy] = np.sqrt( np.sum( np.square(fvalues[matches])))
 
         return bin_weights
 

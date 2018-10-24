@@ -96,16 +96,21 @@ class BaseIO(object):
         results = Hist()
         results.content = data.flatten()   # data is a ndarray (nxbins,nybins)
         results.bins    = {'x':bins_x,'y':bins_y}
-        results.center  = {'x':tools.midpoints(bins_x),'y':tools.midpoints(bins_y)}
-        results.width   = {'x':tools.widths(bins_x),   'y':tools.widths(bins_y)}
+
+        xcenter,ycenter = tools.dummy_bins2D(tools.midpoints(bins_x),tools.midpoints(bins_y))
+        xwidth,ywidth   = tools.dummy_bins2D(tools.widths(bins_x),tools.widths(bins_y))
+
+        results.center  = {'x':xcenter,'y':ycenter}
+        results.width   = {'x':xwidth, 'y':ywidth}
 
         results.error   = np.sqrt(data)
         if weights is not None:
-            # scipy.stats to get sumw2
-            xdata,ydata   = tools.dummy_bins2D(tools.midpoints(x),tools.midpoints(y))
-            results.error = results.sumw2_2D(xdata=xdata,ydata=ydata,values=weights)
+            # scipy.stats to get sumw2 (x,y,weights should have the same shape)
+            results.error = results.sumw2_2D(xdata=x,ydata=y,values=weights)
 
         if reBin is not None:
+            # re-binning after making data from array, likely that the user
+            # passed in binned data and wants to re-bin.
             results.Rebin2D(reBin)
             if normed: results.normalize() # normalize after re-binning
 

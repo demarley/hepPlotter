@@ -70,9 +70,6 @@ class Histogram2D(Plotter):
         data2plot.kwargs['norm']   = LogNorm() if self.logplot['data'] else None
         data2plot.kwargs['normed'] = self.normed or data2plot.normed
 
-        print len(x_bin_center)
-        print len(y_bin_center)
-
         h_,x_,y_,i_ = plt.hist2d(x_bin_center,y_bin_center,bins=[bins_x,bins_y],\
                       weights=data.flatten(),**data2plot.kwargs)
 
